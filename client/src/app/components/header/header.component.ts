@@ -1,7 +1,8 @@
 import { Component, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ThemeService } from '../../services/theme.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-header',
@@ -25,7 +26,7 @@ import { ThemeService } from '../../services/theme.service';
             </svg>
           </button>
 
-          <nav class="hidden md:flex gap-8">
+          <nav class="hidden md:flex gap-8 items-center">
             <a routerLink="/" routerLinkActive="text-primary-600 dark:text-primary-500"
               [routerLinkActiveOptions]="{ exact: true }"
               class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
@@ -43,10 +44,22 @@ import { ThemeService } from '../../services/theme.service';
               class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
               Contact
             </a>
-            <a routerLink="/admin" routerLinkActive="text-primary-600 dark:text-primary-500"
-              class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
-              Admin
-            </a>
+            @if (authService.isAuthenticated()) {
+              <a routerLink="/admin" routerLinkActive="text-primary-600 dark:text-primary-500"
+                class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
+                Admin
+              </a>
+              <button
+                (click)="logout()"
+                class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
+                Logout
+              </button>
+            } @else {
+              <a routerLink="/login" routerLinkActive="text-primary-600 dark:text-primary-500"
+                class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
+                Login
+              </a>
+            }
           </nav>
 
           <button
@@ -73,7 +86,12 @@ import { ThemeService } from '../../services/theme.service';
               <a routerLink="/about" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">About</a>
               <a routerLink="/blog" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Blog</a>
               <a routerLink="/contact" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Contact</a>
-              <a routerLink="/admin" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Admin</a>
+              @if (authService.isAuthenticated()) {
+                <a routerLink="/admin" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Admin</a>
+                <button (click)="logout()" class="text-left text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Logout</button>
+              } @else {
+                <a routerLink="/login" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Login</a>
+              }
             </div>
           </nav>
         }
@@ -85,7 +103,11 @@ import { ThemeService } from '../../services/theme.service';
 export class HeaderComponent {
   isMenuOpen = signal(false);
 
-  constructor(public themeService: ThemeService) {}
+  constructor(
+    public themeService: ThemeService,
+    public authService: AuthService,
+    private router: Router
+  ) {}
 
   toggleMenu(): void {
     this.isMenuOpen.update(open => !open);
@@ -93,5 +115,12 @@ export class HeaderComponent {
 
   toggleTheme(): void {
     this.themeService.toggleTheme();
+  }
+
+  logout(): void {
+    this.authService.logout().subscribe(() => {
+      this.router.navigate(['/']);
+      this.isMenuOpen.set(false);
+    });
   }
 }
