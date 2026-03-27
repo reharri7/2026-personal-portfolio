@@ -34,6 +34,9 @@ build/
 spring-boot-*.log
 application.properties
 
+# Environment variables
+.env
+
 # Logs
 *.log
 logs/
