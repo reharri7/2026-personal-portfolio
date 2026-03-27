@@ -46,4 +46,4 @@ Thumbs.db
 *.tmp
 *.bak
 *.swp
-*~/client/src/environments/
+client/src/environments/
