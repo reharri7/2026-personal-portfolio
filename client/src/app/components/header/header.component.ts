@@ -3,11 +3,12 @@ import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { ThemeService } from '../../services/theme.service';
 import { AuthService } from '../../services/auth.service';
+import { LucideAngularModule, Sun, Moon } from 'lucide-angular';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, CommonModule],
+  imports: [RouterLink, RouterLinkActive, CommonModule, LucideAngularModule],
   template: `
     <header class="bg-white dark:bg-secondary-800 shadow-md dark:shadow-lg sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -67,14 +68,10 @@ import { AuthService } from '../../services/auth.service';
             class="btn btn-ghost btn-circle"
           >
             @if(themeService.isDarkMode()) {
-              <svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zM4.22 4.22a1 1 0 011.414 0l.707.707a1 1 0 11-1.414 1.414l-.707-.707a1 1 0 010-1.414zm11.313 1.414a1 1 0 011.414-1.414l.707.707a1 1 0 11-1.414 1.414l-.707-.707zM4 10a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zm12 0a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM4.22 15.78a1 1 0 011.414 0l.707.707a1 1 0 11-1.414 1.414l-.707-.707a1 1 0 010-1.414zm11.313 1.414a1 1 0 011.414-1.414l.707.707a1 1 0 11-1.414 1.414l-.707-.707zM10 18a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1z" clip-rule="evenodd"></path>
-              </svg>
+              <lucide-icon [img]="sunIcon" class="w-5 h-5 text-yellow-500"></lucide-icon>
             }
             @else {
-            <svg class="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
-            </svg>
+              <lucide-icon [img]="moonIcon" class="w-5 h-5 text-gray-300"></lucide-icon>
             }
           </button>
         </div>
@@ -102,6 +99,8 @@ import { AuthService } from '../../services/auth.service';
 })
 export class HeaderComponent {
   isMenuOpen = signal(false);
+  readonly sunIcon = Sun;
+  readonly moonIcon = Moon;
 
   constructor(
     public themeService: ThemeService,
