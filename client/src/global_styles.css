@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@plugin "daisyui";
+
+@layer base {
+  body {
+    @apply bg-white dark:bg-secondary-900 text-secondary-900 dark:text-white transition-colors duration-300;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary-600 text-white hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600;
+  }
+
+  .btn-secondary {
+    @apply btn bg-secondary-200 text-secondary-900 hover:bg-secondary-300 dark:bg-secondary-700 dark:text-white dark:hover:bg-secondary-600;
+  }
+
+  .btn-outline {
+    @apply btn border-2 border-primary-600 text-primary-600 hover:bg-primary-50 dark:border-primary-500 dark:text-primary-500 dark:hover:bg-secondary-800;
+  }
+
+  .card {
+    @apply bg-white dark:bg-secondary-800 rounded-lg shadow-md dark:shadow-lg p-6 transition-colors duration-300;
+  }
+
+  .section-title {
+    @apply text-4xl font-bold mb-12 text-secondary-900 dark:text-white;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary-600 to-primary-400 dark:from-primary-500 dark:to-primary-300 bg-clip-text text-transparent;
+  }
+
+  /* 3D and artistic additions */
+  .card-3d {
+    @apply card relative transition-transform duration-300 ease-out will-change-transform;
+    transform-style: preserve-3d;
+    box-shadow:
+      0 10px 20px rgba(2, 132, 199, 0.10),
+      0 6px 6px rgba(15, 23, 42, 0.10);
+  }
+
+  .card-3d:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 16px 30px rgba(2, 132, 199, 0.18),
+      0 8px 10px rgba(15, 23, 42, 0.14);
+  }
+
+  .text-3d {
+    text-shadow:
+      0 1px 0 rgba(15, 23, 42, 0.12),
+      0 2px 0 rgba(15, 23, 42, 0.10),
+      0 3px 0 rgba(15, 23, 42, 0.08),
+      0 4px 10px rgba(2, 132, 199, 0.20);
+  }
+}
+
+@layer utilities {
+  .perspective-800 { perspective: 800px; }
+  .perspective-1000 { perspective: 1000px; }
+  .preserve-3d { transform-style: preserve-3d; }
+  .tz-8 { transform: translateZ(8px); }
+  .tz-16 { transform: translateZ(16px); }
+  .tz-24 { transform: translateZ(24px); }
+  .rotateZ-1 { transform: rotateZ(1deg); }
+  .shine-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    opacity: 0.0;
+    transition: opacity 200ms ease;
+    border-radius: inherit;
+  }
+  .has-shine:hover .shine-overlay { opacity: 0.35; }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .card-3d,
+  .text-3d { transition: none !important; transform: none !important; }
+}
