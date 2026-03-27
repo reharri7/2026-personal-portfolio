@@ -1,18 +1,22 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { NgxCaptchaModule } from 'ngx-captcha';
+import { environment } from '../../../environments/environment';
 
 interface ContactForm {
   name: string;
   email: string;
   subject: string;
   message: string;
+  captcha: string;
 }
 
 @Component({
   selector: 'app-contact',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, NgxCaptchaModule],
   template: `
     <div class="bg-white dark:bg-secondary-900">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
@@ -72,7 +76,21 @@ interface ContactForm {
                 ></textarea>
               </div>
 
-              <button type="submit" class="btn btn-primary">Send Message</button>
+              <div>
+                <label class="block text-secondary-700 dark:text-secondary-300 font-semibold mb-2">Verify you're human</label>
+                <ngx-recaptcha2
+                  #captchaElem
+                  [siteKey]="siteKey"
+                  [(ngModel)]="form.captcha"
+                  name="captcha"
+                  (success)="handleCaptchaSuccess($event)"
+                  (error)="handleCaptchaError($event)"
+                  [theme]="'light'"
+                >
+                </ngx-recaptcha2>
+              </div>
+
+              <button type="submit" [disabled]="!form.captcha" class="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed">Send Message</button>
             </form>
 
             @if(showMessage()) {
@@ -132,16 +150,33 @@ interface ContactForm {
   styles: []
 })
 export class ContactComponent {
+  private http = inject(HttpClient);
+
+  siteKey = environment.recaptchaSiteKey;
+
   form: ContactForm = {
     name: '',
     email: '',
     subject: '',
-    message: ''
+    message: '',
+    captcha: ''
   };
 
   showMessage = signal(false);
   isSuccess = signal(true);
   messageText = signal('');
+
+  handleCaptchaSuccess(captchaResponse: string): void {
+    this.form.captcha = captchaResponse;
+  }
+
+  handleCaptchaError(error: any): void {
+    console.error('Captcha error:', error);
+    this.showMessage.set(true);
+    this.isSuccess.set(false);
+    this.messageText.set('Captcha verification failed. Please try again.');
+    setTimeout(() => this.showMessage.set(false), 5000);
+  }
 
   submitForm(): void {
     if (!this.form.name || !this.form.email || !this.form.subject || !this.form.message) {
@@ -152,20 +187,30 @@ export class ContactComponent {
       return;
     }
 
-    const success = Math.random() > 0.3;
-
-    if (success) {
-      this.showMessage.set(true);
-      this.isSuccess.set(true);
-      this.messageText.set('Thank you for your message! I\'ll get back to you soon.');
-      this.resetForm();
-    } else {
+    if (!this.form.captcha) {
       this.showMessage.set(true);
       this.isSuccess.set(false);
-      this.messageText.set('Something went wrong. Please try again.');
+      this.messageText.set('Please complete the captcha verification.');
+      setTimeout(() => this.showMessage.set(false), 5000);
+      return;
     }
 
-    setTimeout(() => this.showMessage.set(false), 5000);
+    this.http.post(`${environment.apiUrl}/contact`, this.form).subscribe({
+      next: () => {
+        this.showMessage.set(true);
+        this.isSuccess.set(true);
+        this.messageText.set('Thank you for your message! I\'ll get back to you soon.');
+        this.resetForm();
+        setTimeout(() => this.showMessage.set(false), 5000);
+      },
+      error: (error) => {
+        console.error('Error submitting form:', error);
+        this.showMessage.set(true);
+        this.isSuccess.set(false);
+        this.messageText.set('Something went wrong. Please try again.');
+        setTimeout(() => this.showMessage.set(false), 5000);
+      }
+    });
   }
 
   private resetForm(): void {
@@ -173,7 +218,8 @@ export class ContactComponent {
       name: '',
       email: '',
       subject: '',
-      message: ''
+      message: '',
+      captcha: ''
     };
   }
 }

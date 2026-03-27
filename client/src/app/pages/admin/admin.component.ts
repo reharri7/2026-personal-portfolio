@@ -1,7 +1,19 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { BlogService, BlogPost } from '../../services/blog.service';
+import { environment } from '../../../environments/environment';
+
+interface Contact {
+  id: number;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  createdAt: string;
+  isRead: boolean;
+}
 
 @Component({
   selector: 'app-admin',
@@ -10,7 +22,33 @@ import { BlogService, BlogPost } from '../../services/blog.service';
   template: `
     <div class="bg-white dark:bg-secondary-900 min-h-screen">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <h1 class="text-4xl font-bold mb-12 text-secondary-900 dark:text-white">Blog Admin</h1>
+        <h1 class="text-4xl font-bold mb-8 text-secondary-900 dark:text-white">Admin Panel</h1>
+
+        <!-- Tabs -->
+        <div class="flex gap-4 mb-8 border-b border-secondary-200 dark:border-secondary-700">
+          <button
+            (click)="activeTab.set('blog')"
+            [class]="activeTab() === 'blog'
+              ? 'px-4 py-2 border-b-2 border-primary-500 text-primary-600 dark:text-primary-400 font-semibold'
+              : 'px-4 py-2 text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-white'"
+          >
+            Blog Posts
+          </button>
+          <button
+            (click)="activeTab.set('contacts')"
+            [class]="activeTab() === 'contacts'
+              ? 'px-4 py-2 border-b-2 border-primary-500 text-primary-600 dark:text-primary-400 font-semibold'
+              : 'px-4 py-2 text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-white'"
+          >
+            Contact Requests
+            @if(unreadCount() > 0) {
+              <span class="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">{{ unreadCount() }}</span>
+            }
+          </button>
+        </div>
+
+        <!-- Blog Tab -->
+        @if(activeTab() === 'blog') {
 
         <div class="grid lg:grid-cols-3 gap-12">
           <div class="lg:col-span-2">
@@ -144,6 +182,92 @@ import { BlogService, BlogPost } from '../../services/blog.service';
             </div>
           </div>
         </div>
+        }
+
+        <!-- Contacts Tab -->
+        @if(activeTab() === 'contacts') {
+          <div class="space-y-6">
+            <div class="flex gap-4 mb-4">
+              <button
+                (click)="contactFilter.set('all')"
+                [class]="contactFilter() === 'all'
+                  ? 'px-4 py-2 bg-primary-600 text-white rounded-lg'
+                  : 'px-4 py-2 bg-secondary-200 dark:bg-secondary-700 text-secondary-900 dark:text-white rounded-lg hover:bg-secondary-300 dark:hover:bg-secondary-600'"
+              >
+                All ({{ contacts().length }})
+              </button>
+              <button
+                (click)="contactFilter.set('unread')"
+                [class]="contactFilter() === 'unread'
+                  ? 'px-4 py-2 bg-primary-600 text-white rounded-lg'
+                  : 'px-4 py-2 bg-secondary-200 dark:bg-secondary-700 text-secondary-900 dark:text-white rounded-lg hover:bg-secondary-300 dark:hover:bg-secondary-600'"
+              >
+                Unread ({{ unreadCount() }})
+              </button>
+              <button
+                (click)="contactFilter.set('read')"
+                [class]="contactFilter() === 'read'
+                  ? 'px-4 py-2 bg-primary-600 text-white rounded-lg'
+                  : 'px-4 py-2 bg-secondary-200 dark:bg-secondary-700 text-secondary-900 dark:text-white rounded-lg hover:bg-secondary-300 dark:hover:bg-secondary-600'"
+              >
+                Read ({{ readCount() }})
+              </button>
+            </div>
+
+            @if(filteredContacts().length === 0) {
+              <div class="card text-center py-12">
+                <p class="text-secondary-500 dark:text-secondary-400">No contact requests</p>
+              </div>
+            }
+
+            @for(contact of filteredContacts(); track contact.id) {
+              <div class="card" [class.border-l-4]="!contact.isRead" [class.border-primary-500]="!contact.isRead">
+                <div class="flex justify-between items-start mb-4">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-3 mb-2">
+                      <h3 class="text-xl font-bold text-secondary-900 dark:text-white">{{ contact.subject }}</h3>
+                      @if(!contact.isRead) {
+                        <span class="px-2 py-1 bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-300 text-xs font-semibold rounded">NEW</span>
+                      }
+                    </div>
+                    <p class="text-secondary-600 dark:text-secondary-400 text-sm">
+                      From: <strong>{{ contact.name }}</strong> ({{ contact.email }})
+                    </p>
+                    <p class="text-secondary-500 dark:text-secondary-500 text-xs mt-1">
+                      {{ formatDate(contact.createdAt) }}
+                    </p>
+                  </div>
+                  <div class="flex gap-2">
+                    @if(contact.isRead) {
+                      <button
+                        (click)="markAsUnread(contact.id)"
+                        class="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white text-sm rounded"
+                      >
+                        Mark Unread
+                      </button>
+                    } @else {
+                      <button
+                        (click)="markAsRead(contact.id)"
+                        class="px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-sm rounded"
+                      >
+                        Mark Read
+                      </button>
+                    }
+                    <button
+                      (click)="deleteContact(contact.id)"
+                      class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+                <div class="bg-secondary-50 dark:bg-secondary-800 p-4 rounded-lg">
+                  <p class="text-secondary-700 dark:text-secondary-300 whitespace-pre-wrap">{{ contact.message }}</p>
+                </div>
+              </div>
+            }
+          </div>
+        }
       </div>
     </div>
   `,
@@ -154,6 +278,10 @@ export class AdminComponent implements OnInit {
   allPosts: BlogPost[] = [];
   tagsInput = '';
 
+  activeTab = signal<'blog' | 'contacts'>('blog');
+  contacts = signal<Contact[]>([]);
+  contactFilter = signal<'all' | 'unread' | 'read'>('all');
+
   postForm = {
     title: '',
     slug: '',
@@ -163,10 +291,80 @@ export class AdminComponent implements OnInit {
     published: true
   };
 
-  constructor(private blogService: BlogService) {}
+  constructor(private blogService: BlogService, private http: HttpClient) {
+    effect(() => {
+      this.contactFilter();
+      this.updateFilteredContacts();
+    });
+  }
 
   ngOnInit(): void {
     this.loadPosts();
+    this.loadContacts();
+  }
+
+  filteredContacts = signal<Contact[]>([]);
+  unreadCount = signal(0);
+  readCount = signal(0);
+
+  private updateFilteredContacts(): void {
+    const allContacts = this.contacts();
+    const filter = this.contactFilter();
+
+    if (filter === 'unread') {
+      this.filteredContacts.set(allContacts.filter(c => !c.isRead));
+    } else if (filter === 'read') {
+      this.filteredContacts.set(allContacts.filter(c => c.isRead));
+    } else {
+      this.filteredContacts.set(allContacts);
+    }
+
+    this.unreadCount.set(allContacts.filter(c => !c.isRead).length);
+    this.readCount.set(allContacts.filter(c => c.isRead).length);
+  }
+
+  private loadContacts(): void {
+    this.http.get<Contact[]>(`${environment.apiUrl}/contact`).subscribe({
+      next: (contacts) => {
+        this.contacts.set(contacts);
+        this.updateFilteredContacts();
+      },
+      error: (error) => console.error('Error loading contacts:', error)
+    });
+  }
+
+  markAsRead(id: number): void {
+    this.http.patch(`${environment.apiUrl}/contact/${id}/read`, {}).subscribe({
+      next: () => this.loadContacts(),
+      error: (error) => console.error('Error marking contact as read:', error)
+    });
+  }
+
+  markAsUnread(id: number): void {
+    this.http.patch(`${environment.apiUrl}/contact/${id}/unread`, {}).subscribe({
+      next: () => this.loadContacts(),
+      error: (error) => console.error('Error marking contact as unread:', error)
+    });
+  }
+
+  deleteContact(id: number): void {
+    if (confirm('Are you sure you want to delete this contact request?')) {
+      this.http.delete(`${environment.apiUrl}/contact/${id}`).subscribe({
+        next: () => this.loadContacts(),
+        error: (error) => console.error('Error deleting contact:', error)
+      });
+    }
+  }
+
+  formatDate(dateString: string): string {
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   }
 
   private loadPosts(): void {
