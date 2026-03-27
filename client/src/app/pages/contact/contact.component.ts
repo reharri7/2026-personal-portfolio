@@ -1,5 +1,5 @@
-import { Component, signal, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, signal, inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { NgxCaptchaModule } from 'ngx-captcha';
@@ -76,19 +76,21 @@ interface ContactForm {
                 ></textarea>
               </div>
 
-              <div>
-                <label class="block text-secondary-700 dark:text-secondary-300 font-semibold mb-2">Verify you're human</label>
-                <ngx-recaptcha2
-                  #captchaElem
-                  [siteKey]="siteKey"
-                  [(ngModel)]="form.captcha"
-                  name="captcha"
-                  (success)="handleCaptchaSuccess($event)"
-                  (error)="handleCaptchaError($event)"
-                  [theme]="'light'"
-                >
-                </ngx-recaptcha2>
-              </div>
+              @if(isBrowser()) {
+                <div>
+                  <label class="block text-secondary-700 dark:text-secondary-300 font-semibold mb-2">Verify you're human</label>
+                  <ngx-recaptcha2
+                    #captchaElem
+                    [siteKey]="siteKey"
+                    [(ngModel)]="form.captcha"
+                    name="captcha"
+                    (success)="handleCaptchaSuccess($event)"
+                    (error)="handleCaptchaError($event)"
+                    [theme]="'light'"
+                  >
+                  </ngx-recaptcha2>
+                </div>
+              }
 
               <button type="submit" [disabled]="!form.captcha" class="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed">Send Message</button>
             </form>
@@ -151,8 +153,10 @@ interface ContactForm {
 })
 export class ContactComponent {
   private http = inject(HttpClient);
+  private platformId = inject(PLATFORM_ID);
 
   siteKey = environment.recaptchaSiteKey;
+  isBrowser = signal(false);
 
   form: ContactForm = {
     name: '',
@@ -165,6 +169,10 @@ export class ContactComponent {
   showMessage = signal(false);
   isSuccess = signal(true);
   messageText = signal('');
+
+  constructor() {
+    this.isBrowser.set(isPlatformBrowser(this.platformId));
+  }
 
   handleCaptchaSuccess(captchaResponse: string): void {
     this.form.captcha = captchaResponse;
