@@ -35,6 +35,12 @@ import { RevealDirective } from '../../../directives/reveal.directive';
 
         <div class="grid gap-8">
           <div *ngFor="let post of filteredPosts()" class="card-3d has-shine post-card" appTilt [tiltDepth]="0.6" [tiltGlow]="true">
+            <img
+              *ngIf="post.coverImageUrl"
+              [src]="post.coverImageUrl"
+              [alt]="post.title"
+              class="w-full h-48 object-cover rounded-lg mb-4"
+            />
             <div class="flex justify-between items-start mb-3">
               <h2 class="text-2xl font-bold flex-1" data-depth="20">{{ post.title }}</h2>
               <span class="text-sm text-secondary-500 dark:text-secondary-400 whitespace-nowrap ml-2">

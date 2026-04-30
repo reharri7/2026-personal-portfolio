@@ -10,6 +10,7 @@ export interface BlogPost {
   excerpt: string;
   content: string;
   tags: string[];
+  coverImageUrl?: string;
   date: string;
   published: boolean;
   authorName?: string;

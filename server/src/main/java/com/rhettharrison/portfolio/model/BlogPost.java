@@ -32,6 +32,9 @@ public class BlogPost {
     @Column(length = 500)
     private String tags;
 
+    @Column(length = 1024)
+    private String coverImageUrl;
+
     @Column(nullable = false)
     private Boolean published = false;
 

@@ -13,6 +13,7 @@ public record BlogPostDTO(
     @Size(max = 1000) String excerpt,
     String content,
     List<@Size(max = 50) String> tags,
+    @Size(max = 1024) String coverImageUrl,
     String date,
     Boolean published,
     String authorName
@@ -41,6 +42,7 @@ public record BlogPostDTO(
             post.getExcerpt(),
             post.getContent(),
             tagList,
+            post.getCoverImageUrl(),
             date,
             post.getPublished(),
             authorName

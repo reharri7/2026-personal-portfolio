@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,15 +25,20 @@ public class BlogPostService {
     private final BlogPostRepository blogPostRepository;
     private final UserRepository userRepository;
 
+    private static final Pattern IMG_SRC_PATTERN =
+        Pattern.compile("^(/uploads/|https?://).+", Pattern.CASE_INSENSITIVE);
+
     private static final PolicyFactory HTML_POLICY = new HtmlPolicyBuilder()
         .allowElements("p", "h1", "h2", "h3", "h4", "h5", "h6",
             "strong", "em", "u", "s", "br", "span",
             "ul", "ol", "li",
             "blockquote", "pre", "code",
             "a", "img")
+        .allowUrlProtocols("http", "https")
         .allowAttributes("href").onElements("a")
         .allowAttributes("target").onElements("a")
-        .allowAttributes("src", "alt").onElements("img")
+        .allowAttributes("src").matching(IMG_SRC_PATTERN).onElements("img")
+        .allowAttributes("alt").onElements("img")
         .allowAttributes("class").globally()
         .allowAttributes("style").globally()
         .toFactory();
@@ -40,6 +46,12 @@ public class BlogPostService {
     private String sanitizeHtml(String html) {
         if (html == null) return null;
         return HTML_POLICY.sanitize(html);
+    }
+
+    private String sanitizeImageUrl(String url) {
+        if (url == null || url.isBlank()) return null;
+        String trimmed = url.trim();
+        return IMG_SRC_PATTERN.matcher(trimmed).matches() ? trimmed : null;
     }
 
     private String generateSlug(String title) {
@@ -69,6 +81,7 @@ public class BlogPostService {
         post.setExcerpt(dto.excerpt());
         post.setContent(sanitizeHtml(dto.content()));
         post.setTags(dto.tags() != null ? String.join(",", dto.tags()) : null);
+        post.setCoverImageUrl(sanitizeImageUrl(dto.coverImageUrl()));
         post.setPublished(dto.published() != null ? dto.published() : false);
         post.setAuthor(author);
 
@@ -97,6 +110,7 @@ public class BlogPostService {
         post.setExcerpt(dto.excerpt());
         post.setContent(sanitizeHtml(dto.content()));
         post.setTags(dto.tags() != null ? String.join(",", dto.tags()) : null);
+        post.setCoverImageUrl(sanitizeImageUrl(dto.coverImageUrl()));
 
         boolean wasPublished = Boolean.TRUE.equals(post.getPublished());
         post.setPublished(dto.published() != null ? dto.published() : false);

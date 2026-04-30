@@ -31,6 +31,13 @@ import { GsapService } from '../../../services/gsap.service';
                   </span>
                 }
               </div>
+              @if (post()!.coverImageUrl) {
+                <img
+                  [src]="post()!.coverImageUrl"
+                  [alt]="post()!.title"
+                  class="w-full max-h-96 object-cover rounded-lg mt-6"
+                />
+              }
             </header>
 
             <div class="article-body prose dark:prose-invert max-w-none prose-lg prose-headings:text-secondary-900 dark:prose-headings:text-white prose-a:text-primary-600 dark:prose-a:text-primary-400">

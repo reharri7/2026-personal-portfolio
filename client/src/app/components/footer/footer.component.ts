@@ -25,12 +25,12 @@ import { Component } from '@angular/core';
             <div class="flex gap-4">
               <a href="#" class="text-secondary-400 hover:text-white transition-colors">GitHub</a>
               <a href="#" class="text-secondary-400 hover:text-white transition-colors">LinkedIn</a>
-              <a href="#" class="text-secondary-400 hover:text-white transition-colors">Twitter</a>
+              <a href="#" class="text-secondary-400 hover:text-white transition-colors">Instagram</a>
             </div>
           </div>
         </div>
         <div class="border-t border-secondary-800 pt-8">
-          <p class="text-center text-secondary-400">&copy; 2024 Full Stack Portfolio. All rights reserved.</p>
+          <p class="text-center text-secondary-400">&copy; 2026 Rhett Harrison. All rights reserved.</p>
         </div>
       </div>
     </footer>
