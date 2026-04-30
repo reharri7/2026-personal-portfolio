@@ -14,36 +14,49 @@ import { BlogService, BlogPost } from '../../../services/blog.service';
           ← Back to Blog
         </a>
 
-        <article>
-          <header class="mb-8">
-            <h1 class="text-5xl font-bold mb-4 text-secondary-900 dark:text-white">{{ post?.title }}</h1>
-            <div class="flex items-center justify-between mb-4 flex-wrap gap-4">
-              <div class="text-secondary-600 dark:text-secondary-400">
-                <span>Published on {{ formatDate(post?.date || '') }}</span>
+        @if (post) {
+          <article>
+            <header class="mb-8">
+              <h1 class="text-5xl font-bold mb-4 text-secondary-900 dark:text-white">{{ post.title }}</h1>
+              <div class="flex items-center justify-between mb-4 flex-wrap gap-4">
+                <div class="text-secondary-600 dark:text-secondary-400">
+                  <span>Published on {{ formatDate(post.date) }}</span>
+                </div>
               </div>
-            </div>
-            <div class="flex gap-2 flex-wrap">
-              @for (tag of post?.tags; track $index) {
-                <span class="px-3 py-1 bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-200 rounded-full text-sm">
-                  {{ tag }}
-                </span>
-              }
-            </div>
-          </header>
+              <div class="flex gap-2 flex-wrap">
+                @for (tag of post.tags; track $index) {
+                  <span class="px-3 py-1 bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-200 rounded-full text-sm">
+                    {{ tag }}
+                  </span>
+                }
+              </div>
+            </header>
 
-          <div class="prose dark:prose-invert max-w-none">
-            <div class="text-lg text-secondary-700 dark:text-secondary-300 whitespace-pre-wrap">
-              {{ post?.content }}
+            <div class="prose dark:prose-invert max-w-none prose-lg prose-headings:text-secondary-900 dark:prose-headings:text-white prose-a:text-primary-600 dark:prose-a:text-primary-400">
+              <div [innerHTML]="post.content"></div>
             </div>
+
+            <footer class="mt-12 pt-8 border-t border-secondary-200 dark:border-secondary-700">
+              <div class="flex gap-4">
+                <a routerLink="/contact" class="btn btn-primary">Get In Touch</a>
+                <a routerLink="/blog" class="btn btn-secondary">View More Posts</a>
+              </div>
+            </footer>
+          </article>
+        }
+
+        @if (loading) {
+          <div class="text-center py-12">
+            <p class="text-secondary-600 dark:text-secondary-400">Loading...</p>
           </div>
+        }
 
-          <footer class="mt-12 pt-8 border-t border-secondary-200 dark:border-secondary-700">
-            <div class="flex gap-4">
-              <a routerLink="/contact" class="btn btn-primary">Get In Touch</a>
-              <a routerLink="/blog" class="btn btn-secondary">View More Posts</a>
-            </div>
-          </footer>
-        </article>
+        @if (!loading && !post) {
+          <div class="text-center py-12">
+            <p class="text-lg text-secondary-600 dark:text-secondary-400">Post not found.</p>
+            <a routerLink="/blog" class="btn btn-primary mt-4">Back to Blog</a>
+          </div>
+        }
       </div>
     </div>
   `,
@@ -51,6 +64,7 @@ import { BlogService, BlogPost } from '../../../services/blog.service';
 })
 export class BlogDetailComponent implements OnInit {
   post: BlogPost | undefined;
+  loading = true;
 
   constructor(
     private route: ActivatedRoute,
@@ -60,7 +74,16 @@ export class BlogDetailComponent implements OnInit {
   ngOnInit(): void {
     this.route.params.subscribe(params => {
       const slug = params['slug'];
-      this.post = this.blogService.getPostBySlug(slug);
+      this.blogService.getPostBySlug(slug).subscribe({
+        next: (post) => {
+          this.post = post;
+          this.loading = false;
+        },
+        error: () => {
+          this.post = undefined;
+          this.loading = false;
+        }
+      });
     });
   }
 

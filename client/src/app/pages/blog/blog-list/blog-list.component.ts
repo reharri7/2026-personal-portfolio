@@ -51,8 +51,14 @@ import { BlogService, BlogPost } from '../../../services/blog.service';
           </div>
         </div>
 
-        <div *ngIf="filteredPosts.length === 0" class="text-center py-12">
-          <p class="text-lg text-secondary-600 dark:text-secondary-400">No posts found for this tag.</p>
+        @if (loading) {
+          <div class="text-center py-12">
+            <p class="text-secondary-600 dark:text-secondary-400">Loading...</p>
+          </div>
+        }
+
+        <div *ngIf="!loading && filteredPosts.length === 0" class="text-center py-12">
+          <p class="text-lg text-secondary-600 dark:text-secondary-400">No posts found.</p>
         </div>
       </div>
     </div>
@@ -64,13 +70,22 @@ export class BlogListComponent implements OnInit {
   uniqueTags: string[] = [];
   selectedTag = signal<string | null>(null);
   filteredPosts: BlogPost[] = [];
+  loading = true;
 
   constructor(private blogService: BlogService) {}
 
   ngOnInit(): void {
-    this.posts = this.blogService.getPublishedPosts();
-    this.extractUniqueTags();
-    this.filterPosts();
+    this.blogService.loadPublishedPosts().subscribe({
+      next: (posts) => {
+        this.posts = posts;
+        this.extractUniqueTags();
+        this.filterPosts();
+        this.loading = false;
+      },
+      error: () => {
+        this.loading = false;
+      }
+    });
   }
 
   private extractUniqueTags(): void {

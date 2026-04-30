@@ -1,7 +1,8 @@
-import { Component, OnInit, signal, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, signal, effect, inject, PLATFORM_ID } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { QuillModule } from 'ngx-quill';
 import { BlogService, BlogPost } from '../../services/blog.service';
 import { environment } from '../../../environments/environment';
 
@@ -18,7 +19,7 @@ interface Contact {
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, QuillModule],
   template: `
     <div class="bg-white dark:bg-secondary-900 min-h-screen">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
@@ -96,14 +97,24 @@ interface Contact {
 
                 <div>
                   <label class="block text-secondary-700 dark:text-secondary-300 font-semibold mb-2">Content *</label>
-                  <textarea
-                    [(ngModel)]="postForm.content"
-                    name="content"
-                    required
-                    rows="10"
-                    class="w-full px-4 py-2 border border-secondary-300 dark:border-secondary-600 rounded-lg bg-white dark:bg-secondary-800 text-secondary-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    placeholder="Full post content..."
-                  ></textarea>
+                  @if (isBrowser) {
+                    <quill-editor
+                      [(ngModel)]="postForm.content"
+                      name="content"
+                      [modules]="quillModules"
+                      [styles]="{ 'min-height': '300px' }"
+                      placeholder="Write your post content..."
+                      theme="snow"
+                    ></quill-editor>
+                  } @else {
+                    <textarea
+                      [(ngModel)]="postForm.content"
+                      name="content"
+                      rows="10"
+                      class="w-full px-4 py-2 border border-secondary-300 dark:border-secondary-600 rounded-lg bg-white dark:bg-secondary-800 text-secondary-900 dark:text-white"
+                      placeholder="Write your post content..."
+                    ></textarea>
+                  }
                 </div>
 
                 <div>
@@ -282,6 +293,20 @@ export class AdminComponent implements OnInit {
   contacts = signal<Contact[]>([]);
   contactFilter = signal<'all' | 'unread' | 'read'>('all');
 
+  private readonly platformId = inject(PLATFORM_ID);
+  readonly isBrowser = isPlatformBrowser(this.platformId);
+
+  quillModules = {
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ list: 'ordered' }, { list: 'bullet' }],
+      ['blockquote', 'code-block'],
+      ['link', 'image'],
+      ['clean']
+    ]
+  };
+
   postForm = {
     title: '',
     slug: '',
@@ -324,7 +349,7 @@ export class AdminComponent implements OnInit {
   }
 
   private loadContacts(): void {
-    this.http.get<Contact[]>(`${environment.apiUrl}/contact`).subscribe({
+    this.http.get<Contact[]>(`${environment.apiUrl}/admin/contact`).subscribe({
       next: (contacts) => {
         this.contacts.set(contacts);
         this.updateFilteredContacts();
@@ -334,14 +359,14 @@ export class AdminComponent implements OnInit {
   }
 
   markAsRead(id: number): void {
-    this.http.patch(`${environment.apiUrl}/contact/${id}/read`, {}).subscribe({
+    this.http.patch(`${environment.apiUrl}/admin/contact/${id}/read`, {}).subscribe({
       next: () => this.loadContacts(),
       error: (error) => console.error('Error marking contact as read:', error)
     });
   }
 
   markAsUnread(id: number): void {
-    this.http.patch(`${environment.apiUrl}/contact/${id}/unread`, {}).subscribe({
+    this.http.patch(`${environment.apiUrl}/admin/contact/${id}/unread`, {}).subscribe({
       next: () => this.loadContacts(),
       error: (error) => console.error('Error marking contact as unread:', error)
     });
@@ -349,7 +374,7 @@ export class AdminComponent implements OnInit {
 
   deleteContact(id: number): void {
     if (confirm('Are you sure you want to delete this contact request?')) {
-      this.http.delete(`${environment.apiUrl}/contact/${id}`).subscribe({
+      this.http.delete(`${environment.apiUrl}/admin/contact/${id}`).subscribe({
         next: () => this.loadContacts(),
         error: (error) => console.error('Error deleting contact:', error)
       });
@@ -368,7 +393,10 @@ export class AdminComponent implements OnInit {
   }
 
   private loadPosts(): void {
-    this.allPosts = this.blogService.getAllPosts();
+    this.blogService.getAllPosts().subscribe({
+      next: (posts) => this.allPosts = posts,
+      error: (error) => console.error('Error loading posts:', error)
+    });
   }
 
   updateSlug(): void {
@@ -388,20 +416,28 @@ export class AdminComponent implements OnInit {
       .map(tag => tag.trim())
       .filter(tag => tag.length > 0);
 
+    const postData = {
+      ...this.postForm,
+      tags
+    };
+
     if (this.editingPost) {
-      this.blogService.updatePost(this.editingPost.id, {
-        ...this.postForm,
-        tags
+      this.blogService.updatePost(this.editingPost.id, postData).subscribe({
+        next: () => {
+          this.resetForm();
+          this.loadPosts();
+        },
+        error: (error) => console.error('Error updating post:', error)
       });
     } else {
-      this.blogService.addPost({
-        ...this.postForm,
-        tags
+      this.blogService.addPost(postData).subscribe({
+        next: () => {
+          this.resetForm();
+          this.loadPosts();
+        },
+        error: (error) => console.error('Error creating post:', error)
       });
     }
-
-    this.resetForm();
-    this.loadPosts();
   }
 
   editPost(post: BlogPost): void {
@@ -417,10 +453,12 @@ export class AdminComponent implements OnInit {
     this.tagsInput = post.tags.join(', ');
   }
 
-  deletePost(id: string): void {
+  deletePost(id: number): void {
     if (confirm('Are you sure you want to delete this post?')) {
-      this.blogService.deletePost(id);
-      this.loadPosts();
+      this.blogService.deletePost(id).subscribe({
+        next: () => this.loadPosts(),
+        error: (error) => console.error('Error deleting post:', error)
+      });
     }
   }
 

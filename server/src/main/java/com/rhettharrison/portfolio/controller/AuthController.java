@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
@@ -79,6 +80,18 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Logout successful"));
     }
     
+    @GetMapping("/csrf")
+    public ResponseEntity<?> csrf(HttpServletRequest request) {
+        CsrfToken token = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
+        if (token == null) {
+            return ResponseEntity.ok(Map.of());
+        }
+        return ResponseEntity.ok(Map.of(
+            "headerName", token.getHeaderName(),
+            "token", token.getToken()
+        ));
+    }
+
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

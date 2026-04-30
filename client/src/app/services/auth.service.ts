@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import { AuthControllerService } from '../api/api/authController.service';
 import { catchError, map, of } from 'rxjs';
+import { resetCsrfToken } from '../interceptors/credentials.interceptor';
 
 @Injectable({
   providedIn: 'root'
@@ -26,6 +27,7 @@ export class AuthService {
   login(email: string, password: string) {
     return this.authController.login({ email, password }).pipe(
       map(() => {
+        resetCsrfToken();
         this.checkAuthStatus();
         return true;
       }),
@@ -36,6 +38,7 @@ export class AuthService {
   logout() {
     return this.authController.logout().pipe(
       map(() => {
+        resetCsrfToken();
         this.isAuthenticatedSignal.set(false);
         this.currentUserSignal.set(null);
         return true;

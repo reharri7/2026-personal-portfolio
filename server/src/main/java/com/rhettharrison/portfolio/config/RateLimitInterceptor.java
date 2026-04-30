@@ -56,6 +56,14 @@ public class RateLimitInterceptor implements HandlerInterceptor {
                 .build();
         }
 
+        // Blog post creation/update limit
+        if (path.startsWith("/api/blog") && ("POST".equals(request.getMethod()) || "PUT".equals(request.getMethod()))) {
+            // 30 requests per hour for blog post creation/updates
+            return Bucket.builder()
+                .addLimit(Bandwidth.classic(30, Refill.intervally(30, Duration.ofHours(1))))
+                .build();
+        }
+
         // Default limit for other endpoints
         // 100 requests per minute
         return Bucket.builder()

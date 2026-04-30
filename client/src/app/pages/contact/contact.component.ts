@@ -203,7 +203,7 @@ export class ContactComponent {
       return;
     }
 
-    this.http.post(`${environment.apiUrl}/contact`, this.form).subscribe({
+    this.http.post(`${environment.apiUrl}/public/contact`, this.form).subscribe({
       next: () => {
         this.showMessage.set(true);
         this.isSuccess.set(true);

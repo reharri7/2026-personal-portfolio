@@ -150,7 +150,9 @@ export class HomeComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.recentPosts = this.blogService.getPublishedPosts().slice(0, 2);
+    this.blogService.loadPublishedPosts().subscribe({
+      next: (posts) => this.recentPosts = posts.slice(0, 2)
+    });
   }
 
   formatDate(dateString: string): string {
