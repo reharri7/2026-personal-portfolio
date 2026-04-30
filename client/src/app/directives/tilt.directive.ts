@@ -31,8 +31,11 @@ export class TiltDirective implements OnInit, OnDestroy {
   }
   get maxTiltInput(): number { return this._maxTilt; }
   @Input() glare = true;
+  @Input() tiltDepth = 0;
+  @Input() tiltGlow = false;
 
   private isBrowser = isPlatformBrowser(this.platformId);
+  private depthTargets: { el: HTMLElement; depth: number }[] = [];
 
   ngOnInit(): void {
     if (!this.isBrowser) return;
@@ -49,6 +52,22 @@ export class TiltDirective implements OnInit, OnDestroy {
       shine.style.background = 'radial-gradient(600px 600px at var(--mx,50%) var(--my,50%), rgba(255,255,255,0.35), rgba(255,255,255,0))';
       host.classList.add('has-shine');
       host.appendChild(shine);
+    }
+
+    if (this.tiltDepth > 0) {
+      const nodes = (host as HTMLElement).querySelectorAll('[data-depth]');
+      this.depthTargets = Array.from(nodes).map((node) => {
+        const el = node as HTMLElement;
+        const depth = Number(el.dataset['depth'] ?? 0) || 0;
+        el.style.transformStyle = 'preserve-3d';
+        el.style.transition = 'transform 200ms ease-out';
+        el.style.willChange = 'transform';
+        return { el, depth };
+      });
+    }
+
+    if (this.tiltGlow) {
+      host.classList.add('has-tilt-glow');
     }
   }
 
@@ -105,6 +124,16 @@ export class TiltDirective implements OnInit, OnDestroy {
     this.rafId = requestAnimationFrame(() => {
       const host = this.el.nativeElement;
       host.style.transform = `rotateX(${this.currentX}deg) rotateY(${this.currentY}deg)` + (reset ? ' translateZ(0)' : '');
+      if (this.tiltDepth > 0 && this.depthTargets.length) {
+        const factor = reset ? 0 : this.tiltDepth;
+        for (const t of this.depthTargets) {
+          const tz = t.depth * factor;
+          // Counter-rotate slightly so the layer stays readable while popping forward
+          const rx = -this.currentX * 0.15;
+          const ry = -this.currentY * 0.15;
+          t.el.style.transform = `translateZ(${tz}px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+        }
+      }
     });
   }
 
@@ -112,6 +141,10 @@ export class TiltDirective implements OnInit, OnDestroy {
     const host = this.el.nativeElement as HTMLElement;
     host.style.setProperty('--mx', `${mx}%`);
     host.style.setProperty('--my', `${my}%`);
+    if (this.tiltGlow) {
+      host.style.setProperty('--glow-x', `${mx}%`);
+      host.style.setProperty('--glow-y', `${my}%`);
+    }
   }
 
   private prefersReducedMotion(): boolean {

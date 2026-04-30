@@ -1,9 +1,12 @@
-import { Component, signal, inject, PLATFORM_ID } from '@angular/core';
+import { Component, ElementRef, OnDestroy, PLATFORM_ID, ViewChild, afterNextRender, inject, signal } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { NgxCaptchaModule } from 'ngx-captcha';
 import { environment } from '../../../environments/environment';
+import { TiltDirective } from '../../directives/tilt.directive';
+import { RevealDirective } from '../../directives/reveal.directive';
+import { GsapService } from '../../services/gsap.service';
 
 interface ContactForm {
   name: string;
@@ -16,18 +19,24 @@ interface ContactForm {
 @Component({
   selector: 'app-contact',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgxCaptchaModule],
+  imports: [CommonModule, FormsModule, NgxCaptchaModule, TiltDirective, RevealDirective],
   template: `
-    <div class="bg-white dark:bg-secondary-900">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+    <div class="relative overflow-hidden bg-white dark:bg-secondary-900">
+      <div #ambient class="pointer-events-none absolute inset-0 opacity-50 dark:opacity-30">
+        <div class="hero-orb w-[26rem] h-[26rem] -top-24 -left-24 bg-gradient-to-br from-primary-300 to-primary-600 opacity-40 blur-3xl"></div>
+        <div class="hero-orb w-[20rem] h-[20rem] top-1/3 -right-24 bg-gradient-to-br from-fuchsia-300 to-primary-500 opacity-30 blur-3xl"></div>
+        <div class="hero-orb w-[18rem] h-[18rem] bottom-0 left-1/2 bg-gradient-to-br from-cyan-300 to-primary-400 opacity-30 blur-3xl"></div>
+      </div>
+
+      <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div class="grid md:grid-cols-3 gap-12">
-          <div class="md:col-span-2">
-            <h1 class="text-4xl font-bold mb-6 text-secondary-900 dark:text-white">Get In Touch</h1>
-            <p class="text-lg text-secondary-600 dark:text-secondary-400 mb-8">
+          <div #formCol class="md:col-span-2">
+            <h1 class="contact-line text-4xl md:text-5xl font-bold mb-6 text-secondary-900 dark:text-white text-3d">Get In Touch</h1>
+            <p class="contact-line text-lg text-secondary-600 dark:text-secondary-400 mb-8">
               Have a project in mind or want to collaborate? I'd love to hear from you. Fill out the form below and I'll get back to you as soon as possible.
             </p>
 
-            <form (ngSubmit)="submitForm()" class="space-y-6">
+            <form (ngSubmit)="submitForm()" class="space-y-6 contact-line">
               <div>
                 <label class="block text-secondary-700 dark:text-secondary-300 font-semibold mb-2">Name</label>
                 <input
@@ -108,9 +117,9 @@ interface ContactForm {
             }
           </div>
 
-          <div class="md:col-span-1">
-            <div class="card sticky top-24">
-              <h3 class="text-xl font-bold mb-6 text-secondary-900 dark:text-white">Contact Information</h3>
+          <div class="md:col-span-1" appReveal="right" [revealDelay]="0.2">
+            <div class="card-3d sticky top-24" appTilt [tiltDepth]="0.6" [tiltGlow]="true">
+              <h3 class="text-xl font-bold mb-6 text-secondary-900 dark:text-white" data-depth="20">Contact Information</h3>
               <div class="space-y-6">
                 <div>
                   <h4 class="font-semibold text-secondary-900 dark:text-white mb-2">Email</h4>
@@ -151,9 +160,14 @@ interface ContactForm {
   `,
   styles: []
 })
-export class ContactComponent {
+export class ContactComponent implements OnDestroy {
+  @ViewChild('formCol', { static: true }) formColEl!: ElementRef<HTMLElement>;
+  @ViewChild('ambient', { static: true }) ambientEl!: ElementRef<HTMLElement>;
+
   private http = inject(HttpClient);
   private platformId = inject(PLATFORM_ID);
+  private gsapService = inject(GsapService);
+  private cleanups: Array<() => void> = [];
 
   siteKey = environment.recaptchaSiteKey;
   isBrowser = signal(false);
@@ -172,6 +186,46 @@ export class ContactComponent {
 
   constructor() {
     this.isBrowser.set(isPlatformBrowser(this.platformId));
+    if (isPlatformBrowser(this.platformId)) {
+      afterNextRender(() => this.initAnimations());
+    }
+  }
+
+  ngOnDestroy(): void {
+    for (const fn of this.cleanups) fn();
+  }
+
+  private async initAnimations() {
+    const { gsap, reduced } = await this.gsapService.loadGsap();
+    if (reduced) return;
+
+    const formCol = this.formColEl?.nativeElement;
+    const ambient = this.ambientEl?.nativeElement;
+
+    if (formCol) {
+      const lines = formCol.querySelectorAll<HTMLElement>('.contact-line');
+      gsap.from(lines, {
+        opacity: 0,
+        y: 28,
+        duration: 0.7,
+        stagger: 0.1,
+        ease: 'power3.out'
+      });
+    }
+
+    if (ambient) {
+      const orbs = ambient.querySelectorAll<HTMLElement>('.hero-orb');
+      orbs.forEach((orb, i) => {
+        gsap.to(orb, {
+          x: i % 2 === 0 ? 40 : -40,
+          y: i % 2 === 0 ? -25 : 25,
+          duration: 10 + i * 2,
+          ease: 'sine.inOut',
+          yoyo: true,
+          repeat: -1
+        });
+      });
+    }
   }
 
   handleCaptchaSuccess(captchaResponse: string): void {
