@@ -92,3 +92,35 @@
   .card-3d,
   .text-3d { transition: none !important; transform: none !important; }
 }
+
+/* Quill rich-text editor dark-mode overrides */
+.dark .ql-toolbar.ql-snow,
+.dark .ql-container.ql-snow {
+  border-color: theme('colors.secondary.600');
+}
+.dark .ql-toolbar.ql-snow {
+  background-color: theme('colors.secondary.700');
+}
+.dark .ql-container.ql-snow,
+.dark .ql-editor {
+  background-color: theme('colors.secondary.800');
+  color: theme('colors.white');
+}
+.dark .ql-editor.ql-blank::before {
+  color: theme('colors.secondary.400');
+}
+.dark .ql-snow .ql-stroke { stroke: theme('colors.secondary.200'); }
+.dark .ql-snow .ql-fill { fill: theme('colors.secondary.200'); }
+.dark .ql-snow .ql-picker { color: theme('colors.secondary.200'); }
+.dark .ql-snow .ql-picker-options {
+  background-color: theme('colors.secondary.700');
+  border-color: theme('colors.secondary.600');
+}
+.dark .ql-snow.ql-toolbar button:hover .ql-stroke,
+.dark .ql-snow.ql-toolbar button.ql-active .ql-stroke {
+  stroke: theme('colors.primary.400');
+}
+.dark .ql-snow.ql-toolbar button:hover .ql-fill,
+.dark .ql-snow.ql-toolbar button.ql-active .ql-fill {
+  fill: theme('colors.primary.400');
+}

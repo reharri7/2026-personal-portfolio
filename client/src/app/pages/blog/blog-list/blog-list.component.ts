@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { BlogService, BlogPost } from '../../../services/blog.service';
@@ -23,7 +23,7 @@ import { BlogService, BlogPost } from '../../../services/blog.service';
             All
           </button>
           <button
-            *ngFor="let tag of uniqueTags"
+            *ngFor="let tag of uniqueTags()"
             (click)="selectTag(tag)"
             [class]="selectedTag() === tag ? 'btn btn-primary' : 'btn btn-outline'"
           >
@@ -32,7 +32,7 @@ import { BlogService, BlogPost } from '../../../services/blog.service';
         </div>
 
         <div class="grid gap-8">
-          <div *ngFor="let post of filteredPosts" class="card hover:shadow-lg transition-shadow">
+          <div *ngFor="let post of filteredPosts()" class="card hover:shadow-lg transition-shadow">
             <div class="flex justify-between items-start mb-3">
               <h2 class="text-2xl font-bold flex-1">{{ post.title }}</h2>
               <span class="text-sm text-secondary-500 dark:text-secondary-400 whitespace-nowrap ml-2">
@@ -51,13 +51,13 @@ import { BlogService, BlogPost } from '../../../services/blog.service';
           </div>
         </div>
 
-        @if (loading) {
+        @if (loading()) {
           <div class="text-center py-12">
             <p class="text-secondary-600 dark:text-secondary-400">Loading...</p>
           </div>
         }
 
-        <div *ngIf="!loading && filteredPosts.length === 0" class="text-center py-12">
+        <div *ngIf="!loading() && filteredPosts().length === 0" class="text-center py-12">
           <p class="text-lg text-secondary-600 dark:text-secondary-400">No posts found.</p>
         </div>
       </div>
@@ -66,48 +66,38 @@ import { BlogService, BlogPost } from '../../../services/blog.service';
   styles: []
 })
 export class BlogListComponent implements OnInit {
-  posts: BlogPost[] = [];
-  uniqueTags: string[] = [];
+  posts = signal<BlogPost[]>([]);
   selectedTag = signal<string | null>(null);
-  filteredPosts: BlogPost[] = [];
-  loading = true;
+  loading = signal(true);
+
+  uniqueTags = computed(() => {
+    const tags = new Set<string>();
+    this.posts().forEach(post => post.tags.forEach(tag => tags.add(tag)));
+    return Array.from(tags).sort();
+  });
+
+  filteredPosts = computed(() => {
+    const tag = this.selectedTag();
+    const all = this.posts();
+    return tag ? all.filter(post => post.tags.includes(tag)) : all;
+  });
 
   constructor(private blogService: BlogService) {}
 
   ngOnInit(): void {
     this.blogService.loadPublishedPosts().subscribe({
       next: (posts) => {
-        this.posts = posts;
-        this.extractUniqueTags();
-        this.filterPosts();
-        this.loading = false;
+        this.posts.set(posts);
+        this.loading.set(false);
       },
       error: () => {
-        this.loading = false;
+        this.loading.set(false);
       }
     });
   }
 
-  private extractUniqueTags(): void {
-    const tags = new Set<string>();
-    this.posts.forEach(post => {
-      post.tags.forEach(tag => tags.add(tag));
-    });
-    this.uniqueTags = Array.from(tags).sort();
-  }
-
-  private filterPosts(): void {
-    const tag = this.selectedTag();
-    if (tag) {
-      this.filteredPosts = this.posts.filter(post => post.tags.includes(tag));
-    } else {
-      this.filteredPosts = this.posts;
-    }
-  }
-
   selectTag(tag: string | null): void {
     this.selectedTag.set(tag);
-    this.filterPosts();
   }
 
   formatDate(dateString: string): string {
