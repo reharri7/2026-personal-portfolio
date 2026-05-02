@@ -4,6 +4,8 @@
     <exclude-output />
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/client/src/app/api" />
+      <excludeFolder url="file://$MODULE_DIR$/client/src/environments" />
+      <excludeFolder url="file://$MODULE_DIR$/uploads/stickers" />
     </content>
     <orderEntry type="jdk" jdkName="openjdk-26" jdkType="JavaSDK" />
     <orderEntry type="sourceFolder" forTests="false" />
