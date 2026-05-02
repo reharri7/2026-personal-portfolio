@@ -1,10 +1,11 @@
-import { Component, OnInit, signal, effect, inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, signal, computed, effect, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { QuillModule } from 'ngx-quill';
 import { map } from 'rxjs';
 import { BlogService, BlogPost } from '../../services/blog.service';
+import { StickerService, Sticker } from '../../services/sticker.service';
 import { environment } from '../../../environments/environment';
 
 type ToastKind = 'info' | 'success' | 'error';
@@ -64,7 +65,84 @@ interface Contact {
               <span class="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">{{ unreadCount() }}</span>
             }
           </button>
+          <button
+            (click)="activeTab.set('stickers'); loadPendingStickers()"
+            [class]="activeTab() === 'stickers'
+              ? 'px-4 py-2 border-b-2 border-primary-500 text-primary-600 dark:text-primary-400 font-semibold'
+              : 'px-4 py-2 text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-white'"
+          >
+            Stickers
+            @if(pendingStickers().length > 0) {
+              <span class="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">{{ pendingStickers().length }}</span>
+            }
+          </button>
         </div>
+
+        <!-- Stickers Tab -->
+        @if(activeTab() === 'stickers') {
+          <div class="space-y-4">
+            <div class="flex gap-4 mb-4">
+              <button
+                (click)="setStickerFilter('pending')"
+                [class]="stickerFilter() === 'pending'
+                  ? 'px-4 py-2 bg-primary-600 text-white rounded-lg'
+                  : 'px-4 py-2 bg-secondary-200 dark:bg-secondary-700 text-secondary-900 dark:text-white rounded-lg hover:bg-secondary-300 dark:hover:bg-secondary-600'"
+              >
+                Pending ({{ pendingStickerCount() }})
+              </button>
+              <button
+                (click)="setStickerFilter('all')"
+                [class]="stickerFilter() === 'all'
+                  ? 'px-4 py-2 bg-primary-600 text-white rounded-lg'
+                  : 'px-4 py-2 bg-secondary-200 dark:bg-secondary-700 text-secondary-900 dark:text-white rounded-lg hover:bg-secondary-300 dark:hover:bg-secondary-600'"
+              >
+                All ({{ allStickerCount() }})
+              </button>
+            </div>
+            @if(visibleStickers().length === 0) {
+              <div class="card text-center py-12">
+                <p class="text-secondary-500 dark:text-secondary-400">No stickers</p>
+              </div>
+            }
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              @for(s of visibleStickers(); track s.id) {
+                <div class="card p-4">
+                  <div class="bg-secondary-100 dark:bg-secondary-800 rounded-md mb-3 aspect-square flex items-center justify-center overflow-hidden">
+                    @if(s.imageUrl) {
+                      <img [src]="s.imageUrl" class="max-w-full max-h-full object-contain" alt="Sticker" />
+                    }
+                  </div>
+                  <div class="flex items-center justify-between gap-2 mb-1">
+                    <h3 class="font-semibold text-secondary-900 dark:text-white truncate">{{ s.username }}</h3>
+                    <span class="px-2 py-0.5 text-xs rounded uppercase tracking-wide"
+                          [class.bg-yellow-200]="s.status === 'pending'"
+                          [class.text-yellow-900]="s.status === 'pending'"
+                          [class.bg-green-200]="s.status === 'approved'"
+                          [class.text-green-900]="s.status === 'approved'"
+                          [class.bg-red-200]="s.status === 'rejected'"
+                          [class.text-red-900]="s.status === 'rejected'">{{ s.status }}</span>
+                  </div>
+                  @if(s.message) {
+                    <p class="text-sm text-secondary-600 dark:text-secondary-400 mb-2">{{ s.message }}</p>
+                  }
+                  <p class="text-xs text-secondary-500 mb-3">
+                    Pos ({{ s.x | number:'1.0-0' }}, {{ s.y | number:'1.0-0' }}) ·
+                    {{ s.width | number:'1.0-0' }}×{{ s.height | number:'1.0-0' }} ·
+                    {{ s.rotation | number:'1.0-0' }}°
+                  </p>
+                  <div class="flex gap-2 flex-wrap">
+                    @if(s.status === 'pending') {
+                      <button class="px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-sm rounded flex-1"
+                              (click)="moderateSticker(s.id, 'approved')">Approve</button>
+                    }
+                    <button class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded flex-1"
+                            (click)="deleteSticker(s.id)">Delete</button>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
 
         <!-- Blog Tab -->
         @if(activeTab() === 'blog') {
@@ -363,9 +441,68 @@ export class AdminComponent implements OnInit {
   postsLoading = signal(true);
   tagsInput = '';
 
-  activeTab = signal<'blog' | 'contacts'>('blog');
+  activeTab = signal<'blog' | 'contacts' | 'stickers'>('blog');
   contacts = signal<Contact[]>([]);
   contactFilter = signal<'all' | 'unread' | 'read'>('all');
+  pendingStickers = signal<Sticker[]>([]);
+  allStickers = signal<Sticker[]>([]);
+  stickerFilter = signal<'pending' | 'all'>('pending');
+  visibleStickers = computed(() =>
+    this.stickerFilter() === 'all' ? this.allStickers() : this.pendingStickers()
+  );
+  pendingStickerCount = computed(() => this.pendingStickers().length);
+  allStickerCount = computed(() => this.allStickers().length);
+  private readonly stickerService = inject(StickerService);
+
+  setStickerFilter(filter: 'pending' | 'all'): void {
+    this.stickerFilter.set(filter);
+    this.loadStickersForFilter();
+  }
+
+  loadPendingStickers(): void {
+    this.stickerFilter.set('pending');
+    this.loadStickersForFilter();
+  }
+
+  private loadStickersForFilter(): void {
+    if (this.stickerFilter() === 'all') {
+      this.stickerService.listAll().subscribe({
+        next: (rows) => {
+          this.allStickers.set(rows);
+          this.pendingStickers.set(rows.filter((s) => s.status === 'pending'));
+        },
+        error: (err) => this.showToast('error', `Failed to load stickers: ${this.extractError(err)}`),
+      });
+    } else {
+      this.stickerService.listPending().subscribe({
+        next: (rows) => this.pendingStickers.set(rows),
+        error: (err) => this.showToast('error', `Failed to load stickers: ${this.extractError(err)}`),
+      });
+    }
+  }
+
+  moderateSticker(id: number, status: 'approved' | 'rejected'): void {
+    this.stickerService.moderate(id, status).subscribe({
+      next: () => {
+        this.pendingStickers.update((rows) => rows.filter((s) => s.id !== id));
+        this.allStickers.update((rows) => rows.map((s) => s.id === id ? { ...s, status } : s));
+        this.showToast('success', status === 'approved' ? 'Sticker approved' : 'Sticker rejected');
+      },
+      error: (err) => this.showToast('error', `Failed to moderate: ${this.extractError(err)}`),
+    });
+  }
+
+  deleteSticker(id: number): void {
+    if (!confirm('Permanently delete this sticker?')) return;
+    this.stickerService.delete(id).subscribe({
+      next: () => {
+        this.pendingStickers.update((rows) => rows.filter((s) => s.id !== id));
+        this.allStickers.update((rows) => rows.filter((s) => s.id !== id));
+        this.showToast('success', 'Sticker deleted');
+      },
+      error: (err) => this.showToast('error', `Failed to delete: ${this.extractError(err)}`),
+    });
+  }
 
   private readonly platformId = inject(PLATFORM_ID);
   readonly isBrowser = isPlatformBrowser(this.platformId);

@@ -64,6 +64,19 @@ public class RateLimitInterceptor implements HandlerInterceptor {
                 .build();
         }
 
+        // Sticker wall: viewport GET is polled often during pan/zoom — allow
+        // generous read throughput; submissions are stricter.
+        if (path.startsWith("/api/public/stickers")) {
+            if ("POST".equals(request.getMethod())) {
+                return Bucket.builder()
+                    .addLimit(Bandwidth.classic(10, Refill.intervally(10, Duration.ofMinutes(1))))
+                    .build();
+            }
+            return Bucket.builder()
+                .addLimit(Bandwidth.classic(600, Refill.intervally(600, Duration.ofMinutes(1))))
+                .build();
+        }
+
         // Default limit for other endpoints
         // 100 requests per minute
         return Bucket.builder()

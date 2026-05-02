@@ -41,6 +41,10 @@ import { LucideAngularModule, Sun, Moon } from 'lucide-angular';
               class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
               Blog
             </a>
+            <a routerLink="/fun/sticker-wall" routerLinkActive="text-primary-600 dark:text-primary-500"
+               class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
+              Sticker Wall
+            </a>
             <a routerLink="/contact" routerLinkActive="text-primary-600 dark:text-primary-500"
               class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
               Contact

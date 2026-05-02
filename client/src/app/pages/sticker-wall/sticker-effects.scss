@@ -1,0 +1,256 @@
+/* Effect overlays for stickers. Each overlay is absolutely positioned over
+ * the sticker image, clipped to the image's alpha shape via CSS `mask-image`.
+ * `mix-blend-mode` lets the gradient interact with the underlying colours. */
+
+/* ===== Inspector: holographic 3D tilt =====
+ *
+ * The inspector card uses the existing TiltDirective which sets `--mx` /
+ * `--my` CSS variables to the cursor position (0–100%). We layer two
+ * pointer-driven gradients on top of the sticker image:
+ *   1. A radial gloss that follows the cursor — a soft white highlight.
+ *   2. A diagonal glare line that sweeps across the sticker as the cursor
+ *      moves horizontally (mapped from `--mx`).
+ * Both are clipped to the sticker shape via the same `mask-image` trick.
+ */
+
+.sticker-inspector-card {
+  perspective: 1000px;
+  --mx: 50%;
+  --my: 50%;
+}
+
+.sticker-inspector-image-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.sticker-inspector-gloss,
+.sticker-inspector-glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  transition: opacity 200ms ease-out;
+}
+
+.sticker-inspector-gloss {
+  background: radial-gradient(
+    circle at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.7) 0%,
+    rgba(255, 255, 255, 0.0) 55%
+  );
+  mix-blend-mode: overlay;
+}
+
+/* Sweep position is derived from --mx so a horizontal cursor pass moves the
+ * highlight line across the sticker. */
+.sticker-inspector-glare {
+  background: linear-gradient(
+    -65deg,
+    transparent calc(var(--mx, 50%) - 4%),
+    rgba(255, 255, 255, 0.45) var(--mx, 50%),
+    transparent calc(var(--mx, 50%) + 4%)
+  );
+  mix-blend-mode: screen;
+}
+
+/* ===== Hover popup =====
+ * Rendered as a child of the sticker's rotated/scaled container, so it
+ * inherits the rotation+scale. The inline transform on the popup itself
+ * negates both, keeping the text upright and at constant on-screen size
+ * regardless of camera zoom or sticker rotation.
+ */
+@keyframes sticker-popup-in {
+  from { opacity: 0; transform: var(--popup-transform) translateY(4px); }
+  to   { opacity: 1; transform: var(--popup-transform); }
+}
+
+.sticker-popup {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  z-index: 30;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  white-space: nowrap;
+  /* The transform itself is set inline so it can read camera scale + sticker
+   * rotation. The keyframe references it via a CSS variable. */
+  animation: sticker-popup-in 150ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Inspector entrance animation. When the user clicks a sticker we capture
+ * its screen rect and pass the offset+scale that maps the centred final
+ * card back to the sticker's on-screen position. The keyframe starts
+ * there and animates to identity, producing a "morph" that visually
+ * grows out of the clicked sticker. */
+@keyframes sticker-inspector-pop {
+  0%   { opacity: 0; transform: scale(0.85); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes sticker-inspector-morph {
+  0% {
+    opacity: 0;
+    transform: translate(var(--from-x, 0), var(--from-y, 0)) scale(var(--from-scale, 0.85));
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+.sticker-inspector-enter {
+  animation: sticker-inspector-pop 250ms cubic-bezier(0.2, 0.8, 0.2, 1.05);
+}
+.sticker-inspector-morph {
+  animation: sticker-inspector-morph 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes sticker-inspector-backdrop {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+.sticker-inspector-backdrop {
+  animation: sticker-inspector-backdrop 200ms ease-out;
+}
+
+/* ===== Notch upload card =====
+ * A pill-shaped card that descends from the top of the canvas and shrinks
+ * back up when closed. The bottom corners are heavily rounded to give it
+ * the iPhone-notch silhouette. Stage transitions cross-fade.
+ */
+@keyframes notch-drop-in {
+  0%   { transform: translate(-50%, -100%); opacity: 0; }
+  100% { transform: translate(-50%, 0); opacity: 1; }
+}
+/* Anchor to the viewport just below the sticky header (h-16 = 4rem) so the
+ * notch stays visible regardless of page scroll. The header sits at z-50;
+ * we stay below that visually but above the canvas content (z-30). The
+ * details form may exceed the viewport on short phones, so the inner
+ * surface scrolls. */
+.sticker-notch {
+  position: fixed;
+  top: 4rem;
+  left: 50%;
+  transform: translate(-50%, 0);
+  z-index: 40;
+  border-bottom-left-radius: 28px;
+  border-bottom-right-radius: 28px;
+  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.35);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  max-height: calc(100vh - 5rem);
+  animation: notch-drop-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sticker-notch-stage {
+  animation: notch-stage-fade 200ms ease-out;
+}
+@keyframes notch-stage-fade {
+  0%   { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+
+.sticker-effect-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+}
+
+/* ------- Rainbow ------- */
+@keyframes sticker-effect-rainbow-spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.sticker-effect-rainbow {
+  mix-blend-mode: color;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    oklch(0.75 0.18 25  / 0.55),
+    oklch(0.80 0.18 90  / 0.55),
+    oklch(0.75 0.18 150 / 0.55),
+    oklch(0.80 0.18 220 / 0.55),
+    oklch(0.75 0.18 290 / 0.55),
+    oklch(0.75 0.18 25  / 0.55)
+  );
+  animation: sticker-effect-rainbow-spin 6s linear infinite;
+}
+
+/* ------- Shimmer (silver sweep) ------- */
+@keyframes sticker-effect-shimmer-sweep {
+  0%   { background-position: -150% 0; }
+  100% { background-position: 250% 0; }
+}
+
+.sticker-effect-shimmer {
+  mix-blend-mode: overlay;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.0) 40%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 255, 255, 0.0) 60%,
+    transparent 65%
+  );
+  background-size: 250% 100%;
+  animation: sticker-effect-shimmer-sweep 2.6s linear infinite;
+}
+
+/* ------- Holographic ------- */
+@keyframes sticker-effect-holo-flow {
+  0%   { background-position: 0% 50%, 0% 50%; }
+  100% { background-position: 200% 50%, -200% 50%; }
+}
+
+.sticker-effect-holo {
+  mix-blend-mode: hard-light;
+  background:
+    linear-gradient(115deg,
+      oklch(0.85 0.18 320 / 0.5) 0%,
+      oklch(0.85 0.18 200 / 0.5) 25%,
+      oklch(0.85 0.18 90  / 0.5) 50%,
+      oklch(0.85 0.18 200 / 0.5) 75%,
+      oklch(0.85 0.18 320 / 0.5) 100%
+    ),
+    linear-gradient(65deg,
+      transparent 30%,
+      rgba(255, 255, 255, 0.35) 50%,
+      transparent 70%
+    );
+  background-size: 200% 100%, 200% 100%;
+  animation: sticker-effect-holo-flow 3.5s linear infinite;
+}
+
+/* ------- Glitter ------- */
+@keyframes sticker-effect-glitter-twinkle {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 0.4; }
+}
+
+.sticker-effect-glitter {
+  mix-blend-mode: screen;
+  /* Tiny offset radial gradients = sparkles. Multiple layers create a
+   * dense field; the keyframe twinkles the whole layer. */
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255,255,255,0.95) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 72% 38%, rgba(255,235,180,0.95) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 41% 67%, rgba(255,255,255,0.9)  0 1.5px, transparent 2px),
+    radial-gradient(circle at 84% 81%, rgba(180,220,255,0.95) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 12% 88%, rgba(255,255,255,0.9)  0 1.5px, transparent 2px),
+    radial-gradient(circle at 58% 12%, rgba(255,200,220,0.95) 0 1.5px, transparent 2px),
+    radial-gradient(circle at 30% 45%, rgba(255,255,255,0.85) 0 1px,   transparent 1.5px),
+    radial-gradient(circle at 65% 70%, rgba(255,255,255,0.85) 0 1px,   transparent 1.5px);
+  background-size: 28px 28px, 28px 28px, 32px 32px, 28px 28px, 36px 36px, 30px 30px, 22px 22px, 22px 22px;
+  background-position: 0 0, 14px 7px, 4px 18px, 12px 11px, 7px 21px, 18px 5px, 0 11px, 11px 0;
+  animation: sticker-effect-glitter-twinkle 1.6s ease-in-out infinite;
+}

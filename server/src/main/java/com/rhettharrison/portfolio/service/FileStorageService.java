@@ -1,6 +1,7 @@
 package com.rhettharrison.portfolio.service;
 
 import jakarta.annotation.PostConstruct;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,19 +28,37 @@ public class FileStorageService {
     @Value("${app.uploads.dir:./uploads}")
     private String uploadsDir;
 
+    @Getter
     private Path rootPath;
 
     @PostConstruct
     void init() throws IOException {
         rootPath = Paths.get(uploadsDir).toAbsolutePath().normalize();
         Files.createDirectories(rootPath.resolve("blog"));
+        Files.createDirectories(rootPath.resolve("stickers"));
     }
 
-    public Path getRootPath() {
-        return rootPath;
+    public StoredFile storeStickerPng(byte[] pngBytes) throws IOException {
+        String filename = UUID.randomUUID() + ".png";
+        Path target = rootPath.resolve("stickers").resolve(filename).normalize();
+        if (!target.startsWith(rootPath)) {
+            throw new IllegalArgumentException("Invalid file path");
+        }
+        Files.write(target, pngBytes);
+        return new StoredFile(filename, "/uploads/stickers/" + filename);
     }
 
-    public StoredFile storeBlogImage(MultipartFile file) throws IOException {
+    public void deleteStickerFile(String filename) {
+        if (filename == null || filename.isBlank()) return;
+        try {
+            Path target = rootPath.resolve("stickers").resolve(filename).normalize();
+            if (target.startsWith(rootPath)) {
+                Files.deleteIfExists(target);
+            }
+        } catch (IOException ignored) {}
+    }
+
+  public StoredFile storeBlogImage(MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");
         }

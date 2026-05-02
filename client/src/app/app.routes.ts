@@ -28,6 +28,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/contact/contact.component').then(m => m.ContactComponent)
   },
   {
+    path: 'fun/sticker-wall',
+    loadComponent: () => import('./pages/sticker-wall/sticker-wall.component').then(m => m.StickerWallComponent)
+  },
+  {
     path: 'login',
     loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent)
   },
