@@ -16,9 +16,22 @@ public record BlogPostDTO(
     @Size(max = 1024) String coverImageUrl,
     String date,
     Boolean published,
-    String authorName
+    String authorName,
+    Boolean rherdleEnabled,
+    Integer rherdleLength,
+    @Size(max = 16) String rherdleWord
 ) {
+    /** Public-safe mapping: never includes the secret Rherdle word. */
     public static BlogPostDTO fromEntity(BlogPost post) {
+        return mapped(post, false);
+    }
+
+    /** Admin mapping: includes the raw Rherdle word for editing. */
+    public static BlogPostDTO fromEntityAdmin(BlogPost post) {
+        return mapped(post, true);
+    }
+
+    private static BlogPostDTO mapped(BlogPost post, boolean includeWord) {
         List<String> tagList = List.of();
         if (post.getTags() != null && !post.getTags().isBlank()) {
             tagList = List.of(post.getTags().split(",")).stream()
@@ -35,6 +48,9 @@ public record BlogPostDTO(
             ? post.getAuthor().getDisplayName()
             : null;
 
+        String word = post.getRherdleWord();
+        boolean hasWord = word != null && !word.isBlank();
+
         return new BlogPostDTO(
             post.getId(),
             post.getTitle(),
@@ -45,7 +61,10 @@ public record BlogPostDTO(
             post.getCoverImageUrl(),
             date,
             post.getPublished(),
-            authorName
+            authorName,
+            hasWord,
+            hasWord ? word.length() : null,
+            includeWord ? word : null
         );
     }
 }

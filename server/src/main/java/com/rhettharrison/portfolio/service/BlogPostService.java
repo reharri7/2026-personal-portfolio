@@ -54,6 +54,12 @@ public class BlogPostService {
         return IMG_SRC_PATTERN.matcher(trimmed).matches() ? trimmed : null;
     }
 
+    private String normalizeRherdleWord(String word) {
+        if (word == null || word.isBlank()) return null;
+        String normalized = word.trim().toLowerCase();
+        return normalized.matches("[a-z]{3,16}") ? normalized : null;
+    }
+
     private String generateSlug(String title) {
         String slug = title.toLowerCase().trim()
             .replaceAll("[^\\w\\s-]", "")
@@ -82,6 +88,7 @@ public class BlogPostService {
         post.setContent(sanitizeHtml(dto.content()));
         post.setTags(dto.tags() != null ? String.join(",", dto.tags()) : null);
         post.setCoverImageUrl(sanitizeImageUrl(dto.coverImageUrl()));
+        post.setRherdleWord(normalizeRherdleWord(dto.rherdleWord()));
         post.setPublished(dto.published() != null ? dto.published() : false);
         post.setAuthor(author);
 
@@ -90,7 +97,7 @@ public class BlogPostService {
         }
 
         BlogPost saved = blogPostRepository.save(post);
-        return BlogPostDTO.fromEntity(saved);
+        return BlogPostDTO.fromEntityAdmin(saved);
     }
 
     @Transactional
@@ -111,6 +118,7 @@ public class BlogPostService {
         post.setContent(sanitizeHtml(dto.content()));
         post.setTags(dto.tags() != null ? String.join(",", dto.tags()) : null);
         post.setCoverImageUrl(sanitizeImageUrl(dto.coverImageUrl()));
+        post.setRherdleWord(normalizeRherdleWord(dto.rherdleWord()));
 
         boolean wasPublished = Boolean.TRUE.equals(post.getPublished());
         post.setPublished(dto.published() != null ? dto.published() : false);
@@ -121,7 +129,7 @@ public class BlogPostService {
         }
 
         BlogPost saved = blogPostRepository.save(post);
-        return BlogPostDTO.fromEntity(saved);
+        return BlogPostDTO.fromEntityAdmin(saved);
     }
 
     public void deletePost(Long id) {
@@ -142,14 +150,14 @@ public class BlogPostService {
 
     public List<BlogPostDTO> getAllPosts() {
         return blogPostRepository.findAllByOrderByCreatedAtDesc().stream()
-            .map(BlogPostDTO::fromEntity)
+            .map(BlogPostDTO::fromEntityAdmin)
             .toList();
     }
 
     public BlogPostDTO getPostById(Long id) {
         BlogPost post = blogPostRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Post not found"));
-        return BlogPostDTO.fromEntity(post);
+        return BlogPostDTO.fromEntityAdmin(post);
     }
 
     public List<String> getAllTags() {

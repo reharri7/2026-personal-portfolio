@@ -35,6 +35,9 @@ public class BlogPost {
     @Column(length = 1024)
     private String coverImageUrl;
 
+    @Column(name = "rherdle_word", length = 16)
+    private String rherdleWord;
+
     @Column(nullable = false)
     private Boolean published = false;
 

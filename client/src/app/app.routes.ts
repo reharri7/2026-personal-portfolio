@@ -32,6 +32,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/sticker-wall/sticker-wall.component').then(m => m.StickerWallComponent)
   },
   {
+    path: 'fun/rherdle',
+    loadComponent: () => import('./pages/rherdle/rherdle.component').then(m => m.RherdlePageComponent)
+  },
+  {
     path: 'login',
     loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent)
   },

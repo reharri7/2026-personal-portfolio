@@ -17,6 +17,8 @@ import { Component } from '@angular/core';
               <li><a href="/" class="text-secondary-400 hover:text-white transition-colors">Home</a></li>
               <li><a href="/about" class="text-secondary-400 hover:text-white transition-colors">About</a></li>
               <li><a href="/blog" class="text-secondary-400 hover:text-white transition-colors">Blog</a></li>
+              <li><a href="/fun/sticker-wall" class="text-secondary-400 hover:text-white transition-colors">Sticker Wall</a></li>
+              <li><a href="/fun/rherdle" class="text-secondary-400 hover:text-white transition-colors">Rherdle</a></li>
               <li><a href="/contact" class="text-secondary-400 hover:text-white transition-colors">Contact</a></li>
             </ul>
           </div>

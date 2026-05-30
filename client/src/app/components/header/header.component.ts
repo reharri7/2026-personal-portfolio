@@ -45,6 +45,10 @@ import { LucideAngularModule, Sun, Moon } from 'lucide-angular';
                class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
               Sticker Wall
             </a>
+            <a routerLink="/fun/rherdle" routerLinkActive="text-primary-600 dark:text-primary-500"
+               class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
+              Rherdle
+            </a>
             <a routerLink="/contact" routerLinkActive="text-primary-600 dark:text-primary-500"
               class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
               Contact
@@ -86,6 +90,8 @@ import { LucideAngularModule, Sun, Moon } from 'lucide-angular';
               <a routerLink="/" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Home</a>
               <a routerLink="/about" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">About</a>
               <a routerLink="/blog" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Blog</a>
+              <a routerLink="/fun/sticker-wall" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Sticker Wall</a>
+              <a routerLink="/fun/rherdle" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Rherdle</a>
               <a routerLink="/contact" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Contact</a>
               @if (authService.isAuthenticated()) {
                 <a routerLink="/admin" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Admin</a>

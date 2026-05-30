@@ -3,11 +3,12 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { BlogService, BlogPost } from '../../../services/blog.service';
 import { GsapService } from '../../../services/gsap.service';
+import { RherdleComponent } from '../../../components/rherdle/rherdle.component';
 
 @Component({
   selector: 'app-blog-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, RherdleComponent],
   template: `
     <div class="bg-white dark:bg-secondary-900">
       <div #container class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
@@ -41,7 +42,22 @@ import { GsapService } from '../../../services/gsap.service';
             </header>
 
             <div class="article-body prose dark:prose-invert max-w-none prose-lg prose-headings:text-secondary-900 dark:prose-headings:text-white prose-a:text-primary-600 dark:prose-a:text-primary-400">
-              <div [innerHTML]="sanitizedContent()"></div>
+              @for (segment of contentSegments(); track $index) {
+                @if (segment.type === 'game') {
+                  <div class="not-prose my-10 p-6 rounded-2xl border border-secondary-200 dark:border-secondary-700 bg-secondary-50 dark:bg-secondary-800/50">
+                    <p class="text-center text-sm font-semibold text-secondary-600 dark:text-secondary-400 mb-4">
+                      Take a break — play this post's Rherdle
+                    </p>
+                    <app-rherdle
+                      mode="BLOG"
+                      [slug]="post()!.slug"
+                      [length]="post()!.rherdleLength ?? 5"
+                      [storageKey]="post()!.slug" />
+                  </div>
+                } @else {
+                  <div [innerHTML]="segment.html"></div>
+                }
+              }
             </div>
 
             <footer class="mt-12 pt-8 border-t border-secondary-200 dark:border-secondary-700 article-footer">
@@ -91,6 +107,31 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
         .join('; ');
       return cleaned ? `style="${cleaned}"` : '';
     });
+  });
+
+  // Split the post body on the [[rherdle]] token (optionally wrapped in a <p>) so the
+  // embedded mini-game renders inline at that exact spot. Falls back to appending the
+  // game at the end when a word is configured but no token is present.
+  contentSegments = computed<Array<{ type: 'html'; html: string } | { type: 'game' }>>(() => {
+    const html = this.sanitizedContent();
+    const post = this.post();
+    const tokenRegex = /(?:<p>\s*)?\[\[rherdle\]\](?:\s*<\/p>)?/gi;
+    const hasToken = tokenRegex.test(html);
+    tokenRegex.lastIndex = 0;
+
+    const segments: Array<{ type: 'html'; html: string } | { type: 'game' }> = [];
+    if (hasToken) {
+      const parts = html.split(tokenRegex);
+      parts.forEach((part, i) => {
+        if (part) segments.push({ type: 'html', html: part });
+        if (i < parts.length - 1 && post?.rherdleEnabled) segments.push({ type: 'game' });
+        else if (i < parts.length - 1) segments.push({ type: 'html', html: '' });
+      });
+    } else {
+      segments.push({ type: 'html', html });
+      if (post?.rherdleEnabled) segments.push({ type: 'game' });
+    }
+    return segments;
   });
 
   constructor(

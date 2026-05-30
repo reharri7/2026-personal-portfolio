@@ -62,7 +62,7 @@ public class SecurityConfig {
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(csrfHandler)
                 .ignoringRequestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/logout",
-                    "/api/public/analytics/collect")
+                    "/api/public/analytics/collect", "/api/public/rherdle/guess")
             );
 
         return http.build();

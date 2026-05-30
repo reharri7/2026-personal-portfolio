@@ -14,6 +14,12 @@ export interface BlogPost {
   date: string;
   published: boolean;
   authorName?: string;
+  /** True when this post has an embedded Rherdle game configured. */
+  rherdleEnabled?: boolean;
+  /** Length of the embedded Rherdle word (public-safe; the word itself is server-only). */
+  rherdleLength?: number;
+  /** The secret word — only present on admin responses, used for editing. */
+  rherdleWord?: string;
 }
 
 @Injectable({

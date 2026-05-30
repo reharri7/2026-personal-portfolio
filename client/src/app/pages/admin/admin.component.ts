@@ -9,6 +9,7 @@ import { StickerService, Sticker } from '../../services/sticker.service';
 import { environment } from '../../../environments/environment';
 import { AnalyticsTabComponent } from './analytics-tab.component';
 import { AdminStickerWallComponent } from './admin-sticker-wall.component';
+import { AdminRherdleTabComponent } from './admin-rherdle-tab.component';
 
 type ToastKind = 'info' | 'success' | 'error';
 
@@ -25,7 +26,7 @@ interface Contact {
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, QuillModule, AnalyticsTabComponent, AdminStickerWallComponent],
+  imports: [CommonModule, FormsModule, QuillModule, AnalyticsTabComponent, AdminStickerWallComponent, AdminRherdleTabComponent],
   template: `
     <div class="bg-white dark:bg-secondary-900 min-h-screen">
       @if (toast(); as t) {
@@ -85,6 +86,14 @@ interface Contact {
               : 'px-4 py-2 text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-white'"
           >
             Analytics
+          </button>
+          <button
+            (click)="activeTab.set('rherdle')"
+            [class]="activeTab() === 'rherdle'
+              ? 'px-4 py-2 border-b-2 border-primary-500 text-primary-600 dark:text-primary-400 font-semibold'
+              : 'px-4 py-2 text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-white'"
+          >
+            Rherdle
           </button>
         </div>
 
@@ -294,6 +303,21 @@ interface Contact {
                 </div>
 
                 <div>
+                  <label class="block text-secondary-700 dark:text-secondary-300 font-semibold mb-2">Rherdle word (optional mini-game)</label>
+                  <input
+                    [(ngModel)]="postForm.rherdleWord"
+                    name="rherdleWord"
+                    type="text"
+                    maxlength="16"
+                    class="w-full px-4 py-2 border border-secondary-300 dark:border-secondary-600 rounded-lg bg-white dark:bg-secondary-800 text-secondary-900 dark:text-white placeholder-secondary-400 dark:placeholder-secondary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 lowercase"
+                    placeholder="e.g. coder"
+                  />
+                  <p class="text-xs text-secondary-500 dark:text-secondary-400 mt-1">
+                    Set a secret word (3–8 letters), then type <code>[[rherdle]]</code> in the post content where the game should appear.
+                  </p>
+                </div>
+
+                <div>
                   <label class="block text-secondary-700 dark:text-secondary-300 font-semibold mb-2">Publish Date</label>
                   <input
                     [(ngModel)]="postForm.date"
@@ -472,6 +496,11 @@ interface Contact {
             }
           </div>
         }
+
+        <!-- Rherdle Tab -->
+        @if(activeTab() === 'rherdle') {
+          <app-admin-rherdle-tab></app-admin-rherdle-tab>
+        }
       </div>
     </div>
   `,
@@ -483,7 +512,7 @@ export class AdminComponent implements OnInit {
   postsLoading = signal(true);
   tagsInput = '';
 
-  activeTab = signal<'blog' | 'contacts' | 'stickers' | 'analytics'>('blog');
+  activeTab = signal<'blog' | 'contacts' | 'stickers' | 'analytics' | 'rherdle'>('blog');
   contacts = signal<Contact[]>([]);
   contactFilter = signal<'all' | 'unread' | 'read'>('all');
   pendingStickers = signal<Sticker[]>([]);
@@ -613,6 +642,7 @@ export class AdminComponent implements OnInit {
     excerpt: '',
     content: '',
     coverImageUrl: '',
+    rherdleWord: '',
     date: new Date().toISOString().split('T')[0],
     published: true
   };
@@ -785,6 +815,7 @@ export class AdminComponent implements OnInit {
       excerpt: post.excerpt,
       content: post.content,
       coverImageUrl: post.coverImageUrl ?? '',
+      rherdleWord: post.rherdleWord ?? '',
       date: post.date,
       published: post.published
     };
@@ -820,6 +851,7 @@ export class AdminComponent implements OnInit {
       excerpt: '',
       content: '',
       coverImageUrl: '',
+      rherdleWord: '',
       date: new Date().toISOString().split('T')[0],
       published: true
     };
