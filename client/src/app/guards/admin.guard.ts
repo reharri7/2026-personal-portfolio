@@ -18,7 +18,7 @@ export const adminGuard: CanActivateFn = () => {
   const http = inject(HttpClient);
   const router = inject(Router);
 
-  return http.get<MeResponse>(`${environment.apiUrl}/auth/me`).pipe(
+  return http.get<MeResponse>(`${environment.apiUrl}/auth/me`, { transferCache: false }).pipe(
     map(user => {
       const isAdmin = (user?.authorities ?? []).some(a =>
         typeof a === 'string' ? a === 'ROLE_ADMIN' : a?.authority === 'ROLE_ADMIN'
