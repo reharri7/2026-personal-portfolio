@@ -27,6 +27,11 @@ public class PublicStickerController {
         return ResponseEntity.ok(stickerService.getViewport(minX, minY, maxX, maxY));
     }
 
+    @GetMapping("/{id}")
+    public StickerDTO getById(@PathVariable Long id) {
+        return stickerService.getApprovedById(id);
+    }
+
     @PostMapping(value = "/preview", consumes = "multipart/form-data")
     public ResponseEntity<StickerService.PreviewResult> preview(
         @RequestParam("image") MultipartFile image

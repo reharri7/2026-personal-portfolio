@@ -45,6 +45,16 @@ public class StickerService {
             .toList();
     }
 
+    /** Single approved sticker by id — backs shareable deep links. Pending or
+     * missing stickers are treated as not found so unmoderated content can't
+     * be fetched directly. */
+    public StickerDTO getApprovedById(Long id) {
+        Sticker s = repo.findById(id)
+            .filter(row -> row.getStatus() == StickerStatus.APPROVED)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sticker not found"));
+        return StickerDTO.fromEntity(s);
+    }
+
     public List<StickerDTO> getPending() {
         return repo.findByStatusOrderByCreatedAtDesc(StickerStatus.PENDING)
             .stream().map(StickerDTO::fromEntity).toList();
@@ -176,11 +186,14 @@ public class StickerService {
         var existing = repo.findByStatusInOrderByCreatedAtAsc(
             List.of(StickerStatus.APPROVED, StickerStatus.PENDING));
         for (var s : existing) {
-            double ratio = StickerOverlapUtil.computeAlphaOverlapRatio(
+            // Symmetric: reject if the new sticker covers an existing one too
+            // much OR is itself too covered (so a big sticker can't bury a
+            // small one, and vice-versa).
+            if (StickerOverlapUtil.overlapsTooMuch(
                 x, y, width, height, normRot, processed.alphaMask(),
-                s.getX(), s.getY(), s.getWidth(), s.getHeight(), s.getRotation(), s.getAlphaMask()
-            );
-            if (ratio > StickerOverlapUtil.MAX_OVERLAP_RATIO) {
+                s.getX(), s.getY(), s.getWidth(), s.getHeight(), s.getRotation(), s.getAlphaMask(),
+                StickerOverlapUtil.MAX_OVERLAP_RATIO
+            )) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Sticker overlaps too much with an existing sticker");
             }
@@ -206,6 +219,19 @@ public class StickerService {
         s.setRotation(normalizeRotation(rotation));
         s.setAlphaMask(processed.alphaMask());
         s.setStatus(StickerStatus.PENDING);
+        repo.save(s);
+        return StickerDTO.fromEntity(s);
+    }
+
+    /** Admin reposition: move/rotate an existing sticker. Overlap is not
+     * enforced here — admins may deliberately place stickers close together. */
+    @Transactional
+    public StickerDTO updatePosition(Long id, double x, double y, double rotation) {
+        Sticker s = repo.findById(id).orElseThrow(() ->
+            new ResponseStatusException(HttpStatus.NOT_FOUND, "Sticker not found"));
+        s.setX(x);
+        s.setY(y);
+        s.setRotation(normalizeRotation(rotation));
         repo.save(s);
         return StickerDTO.fromEntity(s);
     }

@@ -15,7 +15,7 @@ import java.util.Base64;
  * Port of sticker-server/src/pipeline.ts. Takes an uploaded image and produces:
  *   - a finalized PNG (background-removed, outlined, trimmed)
  *   - the trimmed dimensions
- *   - a 16x16 alpha-mask bitmask (base64)
+ *   - a 32x32 alpha-mask bitmask (base64) used for collision + hit testing
  *   - a 16x16 PNG blur placeholder (base64 data URL)
  */
 @Service
@@ -29,7 +29,8 @@ public class StickerImageProcessor {
     private static final int OUTLINE_THICKNESS = 50;
     private static final int OUTLINE_THRESHOLD = 5;
     private static final int ALPHA_THRESHOLD = 10;
-    private static final int GRID_SIZE = 16;
+    private static final int MASK_GRID_SIZE = 32; // 32x32 = 128-byte alpha mask
+    private static final int BLUR_SIZE = 16;       // blur-placeholder resolution
 
     private final BackgroundRemovalService bgRemoval;
 
@@ -96,14 +97,14 @@ public class StickerImageProcessor {
         ByteArrayOutputStream pngOut = new ByteArrayOutputStream();
         ImageIO.write(finalImg, "PNG", pngOut);
 
-        // 8) Alpha mask (16x16 bitmask, base64).
+        // 8) Alpha mask (32x32 bitmask, base64).
         String alphaMask = encodeAlphaMask(trimmed, trimW, trimH);
 
         // 9) Blur placeholder: 16x16 PNG, base64 data URL.
-        BufferedImage blur = new BufferedImage(GRID_SIZE, GRID_SIZE, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage blur = new BufferedImage(BLUR_SIZE, BLUR_SIZE, BufferedImage.TYPE_INT_ARGB);
         Graphics2D bg = blur.createGraphics();
         bg.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-        bg.drawImage(finalImg, 0, 0, GRID_SIZE, GRID_SIZE, null);
+        bg.drawImage(finalImg, 0, 0, BLUR_SIZE, BLUR_SIZE, null);
         bg.dispose();
         ByteArrayOutputStream blurOut = new ByteArrayOutputStream();
         ImageIO.write(blur, "PNG", blurOut);
@@ -190,16 +191,17 @@ public class StickerImageProcessor {
     }
 
     private static String encodeAlphaMask(byte[] rgba, int w, int h) {
-        byte[] bytes = new byte[(GRID_SIZE * GRID_SIZE + 7) / 8];
-        double cellW = (double) w / GRID_SIZE;
-        double cellH = (double) h / GRID_SIZE;
-        for (int gy = 0; gy < GRID_SIZE; gy++) {
-            for (int gx = 0; gx < GRID_SIZE; gx++) {
+        int gs = MASK_GRID_SIZE;
+        byte[] bytes = new byte[(gs * gs + 7) / 8];
+        double cellW = (double) w / gs;
+        double cellH = (double) h / gs;
+        for (int gy = 0; gy < gs; gy++) {
+            for (int gx = 0; gx < gs; gx++) {
                 int px = Math.min((int) Math.floor((gx + 0.5) * cellW), w - 1);
                 int py = Math.min((int) Math.floor((gy + 0.5) * cellH), h - 1);
                 int a = rgba[(py * w + px) * 4 + 3] & 0xFF;
                 if (a > ALPHA_THRESHOLD) {
-                    int bit = gy * GRID_SIZE + gx;
+                    int bit = gy * gs + gx;
                     bytes[bit >> 3] |= (byte) (1 << (bit & 7));
                 }
             }

@@ -50,4 +50,18 @@ public class AdminStickerController {
         }
         return ResponseEntity.ok(stickerService.moderate(id, status));
     }
+
+    public record PositionUpdate(Double x, Double y, Double rotation) {}
+
+    @PatchMapping("/{id}/position")
+    public ResponseEntity<StickerDTO> updatePosition(
+        @PathVariable Long id,
+        @RequestBody PositionUpdate body
+    ) {
+        if (body.x() == null || body.y() == null || body.rotation() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "x, y and rotation are required");
+        }
+        return ResponseEntity.ok(stickerService.updatePosition(id, body.x(), body.y(), body.rotation()));
+    }
 }

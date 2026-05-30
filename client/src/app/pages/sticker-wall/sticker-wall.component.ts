@@ -1,6 +1,7 @@
 import {
   Component,
   computed,
+  effect,
   ElementRef,
   HostListener,
   inject,
@@ -17,6 +18,7 @@ import {
   SubmitStickerInput,
 } from '../../services/sticker.service';
 import { TiltDirective } from '../../directives/tilt.directive';
+import { decodeMask, gridSizeFromMask, overlapsTooMuch } from './overlap';
 
 interface Camera {
   x: number; // world coord at viewport center
@@ -26,6 +28,8 @@ interface Camera {
 
 const MIN_SCALE = 0.15;
 const MAX_SCALE = 3.0;
+const ZOOM_STEP = 0.2;            // exp() coefficient per unit of zoom "direction" (a button click = 1 unit)
+const WHEEL_ZOOM_DIVISOR = 280;   // bigger = slower wheel / trackpad zoom; converts deltaY into a fractional direction
 const ROTATE_PER_WHEEL = 5; // degrees per wheel notch when placing
 
 @Component({
@@ -35,6 +39,9 @@ const ROTATE_PER_WHEEL = 5; // degrees per wheel notch when placing
   styleUrls: ['./sticker-effects.scss'],
   template: `
   <div class="relative w-full h-[calc(100vh-4rem)] overflow-hidden bg-base-200 select-none touch-none overscroll-none"
+       [class.cursor-grab]="!placing() && !panning()"
+       [class.cursor-grabbing]="panning() && !placing()"
+       [class.cursor-crosshair]="placing()"
        #host
        (pointerdown)="onPointerDown($event)"
        (pointermove)="onPointerMove($event)"
@@ -58,7 +65,7 @@ const ROTATE_PER_WHEEL = 5; // degrees per wheel notch when placing
 
       @for (s of renderable(); track s.id) {
         <div
-          class="absolute cursor-pointer pointer-events-auto drop-shadow-md"
+          class="absolute cursor-pointer pointer-events-auto drop-shadow-md rounded-sm focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
           [class.opacity-60]="s.status === 'pending'"
           [style.left.px]="s.x"
           [style.top.px]="s.y"
@@ -66,8 +73,15 @@ const ROTATE_PER_WHEEL = 5; // degrees per wheel notch when placing
           [style.height.px]="s.height"
           [style.transform]="'rotate(' + s.rotation + 'deg)'"
           [style.transform-origin]="'center center'"
+          tabindex="0"
+          role="button"
+          [attr.aria-label]="'Sticker by ' + s.username + (s.message ? ': ' + s.message : '')"
           (mousemove)="onStickerMove(s, $event)"
           (mouseleave)="onStickerLeave(s.id)"
+          (focus)="hovered.set(s.id)"
+          (blur)="onStickerLeave(s.id)"
+          (keydown.enter)="onStickerActivate(s, $event)"
+          (keydown.space)="onStickerActivate(s, $event)"
           (click)="onStickerClick(s, $event)">
           <img class="block w-full h-full" style="max-width:none;max-height:none" [src]="s.imageUrl!" />
           @if (s.effect) {
@@ -104,7 +118,8 @@ const ROTATE_PER_WHEEL = 5; // degrees per wheel notch when placing
           [style.transform]="'rotate(' + s.rotation + 'deg)'"></div>
       }
 
-      <!-- Placement preview -->
+      <!-- Placement preview — glows red (following the sticker's shape) when
+           the current spot would overlap another sticker too much. -->
       @if (placing(); as p) {
         <img
           class="absolute opacity-70 pointer-events-none"
@@ -115,15 +130,38 @@ const ROTATE_PER_WHEEL = 5; // degrees per wheel notch when placing
           [style.height.px]="p.height"
           [style.transform]="'rotate(' + p.rotation + 'deg)'"
           [style.transform-origin]="'center center'"
+          [style.filter]="placementInvalid() ? 'drop-shadow(0 0 3px rgb(239 68 68)) drop-shadow(0 0 4px rgb(239 68 68))' : null"
           style="max-width:none;max-height:none" />
       }
     </div>
 
+    <!-- First-load spinner -->
+    @if (loading()) {
+      <div class="absolute inset-0 flex items-center justify-center pointer-events-none" aria-live="polite">
+        <div class="flex flex-col items-center gap-3 text-base-content/60">
+          <div class="w-8 h-8 border-4 border-base-content/20 border-t-primary-600 rounded-full animate-spin"></div>
+          <span class="text-sm">Loading the wall…</span>
+        </div>
+      </div>
+    }
+
+    <!-- Empty state — settled wall with no stickers yet. -->
+    @if (showEmptyState()) {
+      <div class="absolute inset-0 flex items-center justify-center px-6">
+        <div class="text-center max-w-xs">
+          <div class="text-5xl mb-3">🪧</div>
+          <h2 class="text-lg font-semibold text-base-content">No stickers yet</h2>
+          <p class="mt-1 text-sm text-base-content/60">Be the first to leave your mark on the wall.</p>
+          <button class="btn btn-sm btn-primary mt-4" (click)="openUpload()">Create a Sticker</button>
+        </div>
+      </div>
+    }
+
     <!-- Toolbar — wraps on small screens; labels collapse to icons on phones. -->
     <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-wrap justify-center gap-1 sm:gap-2 items-center bg-base-100/90 backdrop-blur-sm rounded-full px-2 sm:px-3 py-1.5 sm:py-2 shadow-lg max-w-[calc(100vw-2rem)]">
-      <button class="btn btn-sm btn-ghost min-h-0 h-8 px-2" (click)="zoom(-1)" aria-label="Zoom out">−</button>
+      <button class="btn btn-sm btn-ghost min-h-0 h-8 px-2" (click)="zoom(-1)" [disabled]="!canZoomOut()" aria-label="Zoom out">−</button>
       <span class="hidden sm:inline text-xs w-12 text-center tabular-nums">{{ (camera().scale * 100).toFixed(0) }}%</span>
-      <button class="btn btn-sm btn-ghost min-h-0 h-8 px-2" (click)="zoom(1)" aria-label="Zoom in">+</button>
+      <button class="btn btn-sm btn-ghost min-h-0 h-8 px-2" (click)="zoom(1)" [disabled]="!canZoomIn()" aria-label="Zoom in">+</button>
       <button class="btn btn-sm btn-ghost min-h-0 h-8 px-2" (click)="resetCamera()" title="Reset camera">
         <span class="hidden sm:inline">Reset</span><span class="sm:hidden">⊙</span>
       </button>
@@ -144,8 +182,16 @@ const ROTATE_PER_WHEEL = 5; // degrees per wheel notch when placing
 
     <!-- Minimap (top-right) — smaller on phones; hidden on the very narrowest screens. -->
     @if (minimapVisible()) {
-      <div class="absolute top-2 right-2 sm:top-4 sm:right-4 w-20 h-20 sm:w-32 sm:h-32 rounded-lg border border-secondary-300 dark:border-secondary-700 bg-base-100/90 backdrop-blur-sm shadow-md overflow-hidden">
-        <svg [attr.viewBox]="'0 0 ' + minimapSize + ' ' + minimapSize"
+      <div class="absolute top-2 right-2 sm:top-4 sm:right-4 w-20 h-20 sm:w-32 sm:h-32 rounded-lg border border-secondary-300 dark:border-secondary-700 bg-base-100/90 backdrop-blur-sm shadow-md overflow-hidden touch-none"
+           [class.cursor-grab]="!minimapDragging"
+           [class.cursor-grabbing]="minimapDragging"
+           role="button"
+           aria-label="Minimap — click or drag to navigate the wall"
+           (pointerdown)="onMinimapPointerDown($event)"
+           (pointermove)="onMinimapPointerMove($event)"
+           (pointerup)="onMinimapPointerUp($event)"
+           (pointercancel)="onMinimapPointerUp($event)">
+        <svg class="pointer-events-none" [attr.viewBox]="'0 0 ' + minimapSize + ' ' + minimapSize"
              class="w-full h-full text-secondary-700 dark:text-secondary-200">
           <!-- Origin crosshair -->
           <line [attr.x1]="minimapOrigin().x" [attr.y1]="minimapOrigin().y - 3"
@@ -290,12 +336,17 @@ const ROTATE_PER_WHEEL = 5; // degrees per wheel notch when placing
         }
         @case ('place') {
           <div class="sticker-notch-stage p-4 flex items-center gap-3">
-            <div class="text-2xl">📍</div>
+            <div class="text-2xl">{{ placementInvalid() ? '🚫' : '📍' }}</div>
             <div class="flex-1 text-sm">
-              <p class="font-semibold text-secondary-900 dark:text-white">Click anywhere to place</p>
-              <p class="text-xs text-secondary-600 dark:text-secondary-400">
-                @if (showRotationDial()) { Use the dial to rotate. } @else { Scroll to rotate. } Esc to cancel.
-              </p>
+              @if (placementInvalid()) {
+                <p class="font-semibold text-red-600 dark:text-red-400">Overlaps another sticker</p>
+                <p class="text-xs text-secondary-600 dark:text-secondary-400">Move to a clearer spot to place it here.</p>
+              } @else {
+                <p class="font-semibold text-secondary-900 dark:text-white">Click anywhere to place</p>
+                <p class="text-xs text-secondary-600 dark:text-secondary-400">
+                  @if (showRotationDial()) { Use the dial to rotate. } @else { Scroll to rotate. } Esc to cancel.
+                </p>
+              }
             </div>
             <button class="text-xs text-secondary-500 hover:text-secondary-900 dark:hover:text-white"
                     (click)="closeUpload()">Cancel</button>
@@ -317,13 +368,19 @@ const ROTATE_PER_WHEEL = 5; // degrees per wheel notch when placing
   <!-- Inspector -->
   @if (inspect(); as s) {
     <div class="fixed inset-0 z-50 flex items-center justify-center p-6"
-         (click)="inspect.set(null); inspectOrigin.set(null)">
+         (click)="closeInspector()">
       <div class="absolute inset-0 bg-black/70 backdrop-blur-md sticker-inspector-backdrop"></div>
 
       <div class="relative z-10 flex flex-col items-center gap-4 max-w-md w-full"
+           role="dialog"
+           aria-modal="true"
+           [attr.aria-label]="'Sticker by ' + s.username"
+           tabindex="-1"
+           data-inspector-panel
            [class.sticker-inspector-morph]="inspectMorphStyle() !== null"
            [class.sticker-inspector-enter]="inspectMorphStyle() === null"
            [style]="inspectMorphStyle() || {}"
+           (keydown)="onInspectorKeydown($event)"
            (click)="$event.stopPropagation()">
         <!-- Tilted card with holo gloss + glare -->
         <div class="sticker-inspector-card bg-white dark:bg-secondary-900 rounded-2xl shadow-2xl p-6 w-full"
@@ -360,12 +417,16 @@ const ROTATE_PER_WHEEL = 5; // degrees per wheel notch when placing
           </div>
         </div>
 
-        <!-- Hint + close (outside the tilted surface) -->
+        <!-- Hint + actions (outside the tilted surface) -->
         <p class="text-xs text-white/60">
           @if (isTouch()) { Touch & drag to tilt } @else { Move the cursor to tilt }
         </p>
-        <button class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm backdrop-blur-sm"
-                (click)="inspect.set(null); inspectOrigin.set(null)">Close</button>
+        <div class="flex items-center gap-2">
+          <button class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm backdrop-blur-sm"
+                  (click)="copyShareLink()">{{ linkCopied() ? 'Link copied!' : 'Copy link' }}</button>
+          <button class="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm backdrop-blur-sm"
+                  (click)="closeInspector()">Close</button>
+        </div>
       </div>
     </div>
   }
@@ -386,13 +447,22 @@ export class StickerWallComponent implements OnInit, OnDestroy {
   );
 
   readonly camera = signal<Camera>({ x: 0, y: 0, scale: 1 });
+  readonly canZoomIn = computed(() => this.camera().scale < MAX_SCALE - 1e-4);
+  readonly canZoomOut = computed(() => this.camera().scale > MIN_SCALE + 1e-4);
   readonly worldTransform = computed(() => {
     const { x, y, scale } = this.camera();
     return `translate(-50%, -50%) scale(${scale}) translate(${-x}px, ${-y}px)`;
   });
 
+  // True until the first viewport load resolves — drives the initial spinner.
+  readonly loading = signal(true);
+  // A settled, genuinely empty wall: invite the visitor to be the first.
+  readonly showEmptyState = computed(() => !this.loading() && this.renderable().length === 0);
+
   readonly inspect = signal<Sticker | null>(null);
   readonly inspectOrigin = signal<DOMRect | null>(null);
+  readonly linkCopied = signal(false);
+  private static readonly CAMERA_STORAGE_KEY = 'stickerWall.camera';
   readonly error = signal<string | null>(null);
   readonly hovered = signal<number | null>(null);
 
@@ -431,6 +501,7 @@ export class StickerWallComponent implements OnInit, OnDestroy {
   readonly placing = signal<{
     file: File;
     previewUrl: string;
+    alphaMask: string | null;
     naturalWidth: number;
     naturalHeight: number;
     width: number;
@@ -440,7 +511,71 @@ export class StickerWallComponent implements OnInit, OnDestroy {
     rotation: number;
   } | null>(null);
 
+  /** Decoded alpha mask of the in-flight placement preview (cached per url). */
+  private placingMask: { url: string; bytes: Uint8Array | null } | null = null;
+  private placingMaskBytes(): Uint8Array | null {
+    const p = this.placing();
+    if (!p) return null;
+    if (!p.alphaMask) return null;
+    if (this.placingMask?.url !== p.previewUrl) {
+      this.placingMask = { url: p.previewUrl, bytes: decodeMask(p.alphaMask) };
+    }
+    return this.placingMask.bytes;
+  }
+
+  /**
+   * Live placement validity: true when the preview would overlap any rendered
+   * sticker beyond the allowed ratio (checked symmetrically so a large sticker
+   * can't bury a small one). Recomputes as the preview moves/rotates.
+   */
+  readonly placementInvalid = computed<boolean>(() => {
+    const p = this.placing();
+    if (!p) return false;
+    const aMask = this.placingMaskBytes();
+    for (const s of this.renderable()) {
+      const bMask = this.getMaskBytes(s);
+      if (overlapsTooMuch(
+        p.x, p.y, p.width, p.height, p.rotation, aMask,
+        s.x, s.y, s.width, s.height, s.rotation, bMask
+      )) {
+        return true;
+      }
+    }
+    return false;
+  });
+
   private dragging: { kind: 'pan'; lastX: number; lastY: number } | null = null;
+
+  // Drives the grab/grabbing cursor on the wall. A signal (not just `dragging`)
+  // so the cursor flips the instant a pan starts, before the next pointermove.
+  readonly panning = signal(false);
+
+  // Where the most recent pointer went down, in client coords. Used to tell a
+  // sticker *click* apart from a *pan that happened to start on a sticker*.
+  private pointerDownClient: { x: number; y: number } | null = null;
+  private static readonly CLICK_MOVE_THRESHOLD = 6; // px of travel that turns a click into a drag
+
+  // The element focused before the inspector opened, restored when it closes.
+  private lastFocused: HTMLElement | null = null;
+
+  constructor() {
+    // Inspector focus management: move focus into the dialog when it opens,
+    // restore it to the trigger when it closes. Guarded for SSR (no rAF/DOM).
+    effect(() => {
+      const open = this.inspect() !== null;
+      if (typeof window === 'undefined') return;
+      if (open) {
+        requestAnimationFrame(() => {
+          const panel = this.host()?.nativeElement.ownerDocument
+            .querySelector('[data-inspector-panel]') as HTMLElement | null;
+          panel?.focus();
+        });
+      } else if (this.lastFocused) {
+        this.lastFocused.focus?.();
+        this.lastFocused = null;
+      }
+    });
+  }
 
   // Multi-touch tracking for pinch-zoom. We hold the live client coords of
   // every active pointer; pinching kicks in once there are >= 2.
@@ -464,7 +599,10 @@ export class StickerWallComponent implements OnInit, OnDestroy {
   private static readonly EDGE_PAN_MAX_SPEED = 25;  // px/frame at the very edge
 
   ngOnInit(): void {
+    const saved = this.restoreCamera();
+    if (saved) this.camera.set(saved);
     queueMicrotask(() => this.refreshViewport());
+    queueMicrotask(() => this.openDeepLinkTarget());
     this.viewportTimer = window.setInterval(() => {
       if (!document.hidden) this.refreshViewport();
     }, StickerWallComponent.REFRESH_POLL_MS);
@@ -494,6 +632,8 @@ export class StickerWallComponent implements OnInit, OnDestroy {
     if (!document.hidden) this.refreshViewport();
   };
 
+  private static readonly KEY_PAN_STEP = 90; // screen px moved per arrow-key press
+
   private handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
       if (this.busy()) return; // don't cancel mid-flight network calls
@@ -502,19 +642,42 @@ export class StickerWallComponent implements OnInit, OnDestroy {
         this.notchStage.set('closed');
         e.preventDefault();
       } else if (this.inspect()) {
-        this.inspect.set(null);
-        this.inspectOrigin.set(null);
+        this.closeInspector();
       } else if (this.notchOpen()) {
         this.closeUpload();
       }
+      return;
     }
+
+    // Keyboard pan/zoom. Stay out of the way of typing and of any mode that
+    // owns the keyboard (placement, the upload notch, the inspector dialog).
+    const t = e.target as HTMLElement | null;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) {
+      return;
+    }
+    if (this.placing() || this.notchOpen() || this.inspect()) return;
+
+    const step = StickerWallComponent.KEY_PAN_STEP;
+    const cam = this.camera();
+    switch (e.key) {
+      case 'ArrowUp':    this.camera.set({ ...cam, y: cam.y - step / cam.scale }); break;
+      case 'ArrowDown':  this.camera.set({ ...cam, y: cam.y + step / cam.scale }); break;
+      case 'ArrowLeft':  this.camera.set({ ...cam, x: cam.x - step / cam.scale }); break;
+      case 'ArrowRight': this.camera.set({ ...cam, x: cam.x + step / cam.scale }); break;
+      case '+': case '=': this.zoom(1); break;
+      case '-': case '_': this.zoom(-1); break;
+      case '0': this.resetCamera(); return; // resetCamera already refreshes
+      default: return;
+    }
+    e.preventDefault();
+    this.scheduleRefresh();
   };
 
   // ----- camera / panning -----
 
   zoom(direction: number, anchorClientX?: number, anchorClientY?: number): void {
     const cam = this.camera();
-    const factor = Math.exp(direction * 0.2);
+    const factor = Math.exp(direction * ZOOM_STEP);
     let newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, cam.scale * factor));
     if (newScale === cam.scale) return;
     // Anchor zoom around cursor when supplied, else around center.
@@ -626,15 +789,18 @@ export class StickerWallComponent implements OnInit, OnDestroy {
 
   onPointerDown(e: PointerEvent): void {
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    this.pointerDownClient = { x: e.clientX, y: e.clientY };
     (e.target as Element).setPointerCapture?.(e.pointerId);
     if (this.placing()) return;
 
     if (this.pointers.size >= 2) {
       // Second finger down — kick off pinch and abandon any existing pan.
       this.dragging = null;
+      this.panning.set(false);
       this.startPinch();
     } else {
       this.dragging = { kind: 'pan', lastX: e.clientX, lastY: e.clientY };
+      this.panning.set(true);
     }
   }
 
@@ -685,6 +851,7 @@ export class StickerWallComponent implements OnInit, OnDestroy {
       return;
     }
     this.dragging = null;
+    this.panning.set(false);
     this.scheduleRefresh();
   }
 
@@ -697,7 +864,11 @@ export class StickerWallComponent implements OnInit, OnDestroy {
       this.placing.set({ ...placing, rotation: next < 0 ? next + 360 : next });
       return;
     }
-    this.zoom(e.deltaY > 0 ? -1 : 1, e.clientX, e.clientY);
+    // Scale the zoom by how much the wheel/trackpad actually moved, so a gentle
+    // scroll nudges and a hard scroll still won't lurch. Clamped to a single
+    // button-click's worth of zoom per event.
+    const direction = Math.max(-1, Math.min(1, -e.deltaY / WHEEL_ZOOM_DIVISOR));
+    this.zoom(direction, e.clientX, e.clientY);
   }
 
   private clientToWorld(clientX: number, clientY: number): { x: number; y: number } {
@@ -718,7 +889,38 @@ export class StickerWallComponent implements OnInit, OnDestroy {
     );
   }
 
+  /** Read a previously-saved camera from localStorage, validated + clamped. */
+  private restoreCamera(): Camera | null {
+    if (typeof localStorage === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem(StickerWallComponent.CAMERA_STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (typeof parsed?.x !== 'number' || typeof parsed?.y !== 'number' || typeof parsed?.scale !== 'number') {
+        return null;
+      }
+      return {
+        x: parsed.x,
+        y: parsed.y,
+        scale: Math.max(MIN_SCALE, Math.min(MAX_SCALE, parsed.scale)),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  /** Persist the current camera so a reload returns to the same spot. */
+  private persistCamera(): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      localStorage.setItem(StickerWallComponent.CAMERA_STORAGE_KEY, JSON.stringify(this.camera()));
+    } catch {
+      // Storage full / unavailable (private mode) — non-fatal.
+    }
+  }
+
   refreshViewport(): void {
+    this.persistCamera();
     const el = this.host()?.nativeElement;
     if (!el) return;
     const rect = el.getBoundingClientRect();
@@ -733,7 +935,10 @@ export class StickerWallComponent implements OnInit, OnDestroy {
         maxX: cam.x + halfW + margin,
         maxY: cam.y + halfH + margin,
       })
-      .subscribe();
+      .subscribe({
+        next: () => this.loading.set(false),
+        error: () => this.loading.set(false),
+      });
   }
 
   // ----- upload + placement -----
@@ -780,6 +985,7 @@ export class StickerWallComponent implements OnInit, OnDestroy {
         this.placing.set({
           file,
           previewUrl: res.imageDataUrl,
+          alphaMask: res.alphaMask,
           naturalWidth: res.width,
           naturalHeight: res.height,
           width,
@@ -811,6 +1017,12 @@ export class StickerWallComponent implements OnInit, OnDestroy {
   private confirmPlacement(): void {
     const p = this.placing();
     if (!p) return;
+    // Client-side guard mirroring the server check — don't even submit a spot
+    // that overlaps too much; keep the preview up so the user can nudge it.
+    if (this.placementInvalid()) {
+      this.error.set('That spot overlaps another sticker too much — move it to a clearer area.');
+      return;
+    }
     const submission: SubmitStickerInput = {
       image: p.file,
       username: this.formUsername.trim(),
@@ -868,9 +1080,7 @@ export class StickerWallComponent implements OnInit, OnDestroy {
     if (!s.alphaMask) return null;
     let cached = this.maskCache.get(s.id);
     if (cached) return cached;
-    const binary = atob(s.alphaMask);
-    const out = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) out[i] = binary.charCodeAt(i);
+    const out = decodeMask(s.alphaMask);
     this.maskCache.set(s.id, out);
     return out;
   }
@@ -882,13 +1092,14 @@ export class StickerWallComponent implements OnInit, OnDestroy {
    * The sticker is rendered as a rotated rectangle in world space; the
    * rectangle's bounding box in screen space catches pointer events even
    * over transparent corners. Hit testing un-rotates the world-space point
-   * into the sticker's local frame, quantises to a 16x16 grid cell, and
-   * samples the bit. Stickers without an alpha mask fall through to the
-   * full bounding box.
+   * into the sticker's local frame, quantises to a grid cell (resolution
+   * inferred from the mask), and samples the bit. Stickers without an alpha
+   * mask fall through to the full bounding box.
    */
   private isPointOnSticker(s: Sticker, clientX: number, clientY: number): boolean {
     const bytes = this.getMaskBytes(s);
     if (!bytes) return true;
+    const gs = gridSizeFromMask(bytes);
 
     const world = this.clientToWorld(clientX, clientY);
     const cx = s.x + s.width / 2;
@@ -904,9 +1115,9 @@ export class StickerWallComponent implements OnInit, OnDestroy {
     const ly = dx * sin + dy * cos + s.height / 2;
     if (lx < 0 || lx >= s.width || ly < 0 || ly >= s.height) return false;
 
-    const gx = Math.min(15, Math.max(0, Math.floor((lx / s.width) * 16)));
-    const gy = Math.min(15, Math.max(0, Math.floor((ly / s.height) * 16)));
-    const bit = gy * 16 + gx;
+    const gx = Math.min(gs - 1, Math.max(0, Math.floor((lx / s.width) * gs)));
+    const gy = Math.min(gs - 1, Math.max(0, Math.floor((ly / s.height) * gs)));
+    const bit = gy * gs + gx;
     return ((bytes[bit >> 3] >> (bit & 7)) & 1) !== 0;
   }
 
@@ -920,15 +1131,115 @@ export class StickerWallComponent implements OnInit, OnDestroy {
 
   onStickerClick(s: Sticker, e: MouseEvent): void {
     e.stopPropagation();
+    // If the pointer travelled meaningfully between down and up, this was a pan
+    // that started on the sticker — not a click. Don't open the inspector.
+    const down = this.pointerDownClient;
+    if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > StickerWallComponent.CLICK_MOVE_THRESHOLD) {
+      return;
+    }
     if (!this.isPointOnSticker(s, e.clientX, e.clientY)) return;
-    // Capture the clicked sticker's screen rect for the morph animation.
-    const target = e.currentTarget as HTMLElement;
-    this.inspectOrigin.set(target.getBoundingClientRect());
+    this.openInspector(s, e.currentTarget as HTMLElement);
+  }
+
+  /** Keyboard activation (Enter / Space) of a focused sticker. */
+  onStickerActivate(s: Sticker, e: Event): void {
+    e.preventDefault();
+    e.stopPropagation();
+    this.openInspector(s, e.currentTarget as HTMLElement);
+  }
+
+  /** Open the inspector for a sticker, capturing the trigger element's rect
+   * for the morph animation and remembering focus for restoration on close.
+   * A null trigger (e.g. a deep-link open) falls back to the plain pop-in. */
+  private openInspector(s: Sticker, trigger: HTMLElement | null): void {
+    this.lastFocused = trigger
+      ? (trigger.ownerDocument.activeElement as HTMLElement | null)
+      : null;
+    this.inspectOrigin.set(trigger ? trigger.getBoundingClientRect() : null);
     this.inspect.set(s);
+    this.linkCopied.set(false);
+    this.syncDeepLink(s.id);
+  }
+
+  /** Close the inspector and drop the ?sticker= deep-link param. */
+  closeInspector(): void {
+    this.inspect.set(null);
+    this.inspectOrigin.set(null);
+    this.syncDeepLink(null);
+  }
+
+  /** Reflect the open sticker in the URL query string (no navigation) so the
+   * page is shareable / refresh-stable. */
+  private syncDeepLink(id: number | null): void {
+    if (typeof window === 'undefined' || !window.history?.replaceState) return;
+    const url = new URL(window.location.href);
+    if (id == null) url.searchParams.delete('sticker');
+    else url.searchParams.set('sticker', String(id));
+    window.history.replaceState(window.history.state, '', url);
+  }
+
+  /** Copy the current (deep-linked) URL to the clipboard. */
+  copyShareLink(): void {
+    if (typeof navigator === 'undefined' || !navigator.clipboard) return;
+    navigator.clipboard.writeText(window.location.href).then(
+      () => {
+        this.linkCopied.set(true);
+        window.setTimeout(() => this.linkCopied.set(false), 2000);
+      },
+      () => {}
+    );
+  }
+
+  /** On load, if the URL carries ?sticker=<id>, fetch it, centre it, and open
+   * the inspector. Silently ignores unknown / unapproved ids. */
+  private openDeepLinkTarget(): void {
+    if (typeof window === 'undefined') return;
+    const raw = new URL(window.location.href).searchParams.get('sticker');
+    const id = raw ? Number(raw) : NaN;
+    if (!Number.isFinite(id)) return;
+
+    const existing = this.stickers().find((s) => s.id === id && s.imageUrl);
+    if (existing) {
+      this.focusSticker(existing.id);
+      this.openInspector(existing, null);
+      return;
+    }
+    this.stickerService.getById(id).subscribe({
+      next: (s) => {
+        this.stickerService.stickers.update((rows) =>
+          rows.some((r) => r.id === s.id) ? rows : [...rows, s]
+        );
+        this.focusSticker(s.id);
+        this.openInspector(s, null);
+      },
+      error: () => {},
+    });
   }
 
   onStickerLeave(id: number): void {
     if (this.hovered() === id) this.hovered.set(null);
+  }
+
+  /** Trap Tab focus within the open inspector dialog. */
+  onInspectorKeydown(e: KeyboardEvent): void {
+    if (e.key !== 'Tab') return;
+    const panel = e.currentTarget as HTMLElement;
+    const focusables = Array.from(
+      panel.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((el) => !el.hasAttribute('disabled'));
+    if (focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    const active = panel.ownerDocument.activeElement;
+    if (e.shiftKey && (active === first || active === panel)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
   }
 
   /**
@@ -1131,6 +1442,58 @@ export class StickerWallComponent implements OnInit, OnDestroy {
   private static readonly MINIMAP_MIN_VIEWPORT_FRACTION = 0.67;
 
   readonly minimapVisible = computed(() => this.renderable().length > 0);
+
+  // ----- minimap navigation -----
+
+  /** True while a minimap drag is in progress (drives the grab cursor). */
+  minimapDragging = false;
+  // Last pointer position in minimap coords during a drag, for delta panning.
+  private minimapDragLast: { x: number; y: number } | null = null;
+
+  /** Convert a pointer event over the minimap into minimap-space coords. */
+  private minimapClientToCoords(e: PointerEvent): { x: number; y: number } {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    return {
+      x: ((e.clientX - rect.left) / rect.width) * this.minimapSize,
+      y: ((e.clientY - rect.top) / rect.height) * this.minimapSize,
+    };
+  }
+
+  onMinimapPointerDown(e: PointerEvent): void {
+    e.stopPropagation();
+    (e.target as Element).setPointerCapture?.(e.pointerId);
+    this.minimapDragging = true;
+    const p = this.minimapClientToCoords(e);
+    this.minimapDragLast = p;
+    // Click-to-jump: centre the clicked world point in the viewport.
+    const ms = this.minimapScale();
+    const half = this.minimapSize / 2;
+    const cam = this.camera();
+    this.camera.set({ x: cam.x + (p.x - half) / ms, y: cam.y + (p.y - half) / ms, scale: cam.scale });
+  }
+
+  onMinimapPointerMove(e: PointerEvent): void {
+    if (!this.minimapDragging || !this.minimapDragLast) return;
+    e.stopPropagation();
+    const p = this.minimapClientToCoords(e);
+    const ms = this.minimapScale();
+    const cam = this.camera();
+    // Pan the camera by the drag delta, converted from minimap px to world units.
+    this.camera.set({
+      x: cam.x + (p.x - this.minimapDragLast.x) / ms,
+      y: cam.y + (p.y - this.minimapDragLast.y) / ms,
+      scale: cam.scale,
+    });
+    this.minimapDragLast = p;
+  }
+
+  onMinimapPointerUp(e: PointerEvent): void {
+    if (!this.minimapDragging) return;
+    e.stopPropagation();
+    this.minimapDragging = false;
+    this.minimapDragLast = null;
+    this.scheduleRefresh();
+  }
 
   /** mapScale = minimap pixels per world unit. */
   private readonly minimapScale = computed<number>(() => {

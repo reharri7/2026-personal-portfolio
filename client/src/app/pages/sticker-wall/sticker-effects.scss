@@ -254,3 +254,22 @@
   background-position: 0 0, 14px 7px, 4px 18px, 12px 11px, 7px 21px, 18px 5px, 0 11px, 11px 0;
   animation: sticker-effect-glitter-twinkle 1.6s ease-in-out infinite;
 }
+
+/* ===== Reduced motion =====
+ * Honour the OS "reduce motion" preference: drop the entrance animations and
+ * freeze the looping sticker effects (the gradients still render statically,
+ * just without the continuous spin/sweep/twinkle that can trigger discomfort). */
+@media (prefers-reduced-motion: reduce) {
+  .sticker-popup,
+  .sticker-inspector-enter,
+  .sticker-inspector-morph,
+  .sticker-inspector-backdrop,
+  .sticker-notch,
+  .sticker-notch-stage,
+  .sticker-effect-rainbow,
+  .sticker-effect-shimmer,
+  .sticker-effect-holo,
+  .sticker-effect-glitter {
+    animation: none !important;
+  }
+}

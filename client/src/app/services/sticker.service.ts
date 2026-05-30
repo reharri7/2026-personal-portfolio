@@ -60,6 +60,11 @@ export class StickerService {
     );
   }
 
+  /** Fetch a single approved sticker by id (used for shareable deep links). */
+  getById(id: number): Observable<Sticker> {
+    return this.http.get<Sticker>(`${this.publicUrl}/${id}`);
+  }
+
   preview(image: File): Observable<{
     imageDataUrl: string;
     width: number;
@@ -95,6 +100,11 @@ export class StickerService {
 
   moderate(id: number, status: 'approved' | 'rejected'): Observable<Sticker> {
     return this.http.patch<Sticker>(`${this.adminUrl}/${id}`, { status });
+  }
+
+  /** Admin: move/rotate a sticker. */
+  updatePosition(id: number, x: number, y: number, rotation: number): Observable<Sticker> {
+    return this.http.patch<Sticker>(`${this.adminUrl}/${id}/position`, { x, y, rotation });
   }
 
   delete(id: number): Observable<void> {

@@ -8,6 +8,7 @@ import { BlogService, BlogPost } from '../../services/blog.service';
 import { StickerService, Sticker } from '../../services/sticker.service';
 import { environment } from '../../../environments/environment';
 import { AnalyticsTabComponent } from './analytics-tab.component';
+import { AdminStickerWallComponent } from './admin-sticker-wall.component';
 
 type ToastKind = 'info' | 'success' | 'error';
 
@@ -24,7 +25,7 @@ interface Contact {
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, QuillModule, AnalyticsTabComponent],
+  imports: [CommonModule, FormsModule, QuillModule, AnalyticsTabComponent, AdminStickerWallComponent],
   template: `
     <div class="bg-white dark:bg-secondary-900 min-h-screen">
       @if (toast(); as t) {
@@ -95,7 +96,33 @@ interface Contact {
         <!-- Stickers Tab -->
         @if(activeTab() === 'stickers') {
           <div class="space-y-4">
-            <div class="flex gap-4 mb-4">
+            <div class="flex flex-wrap gap-4 mb-4 items-center justify-between">
+              <div class="flex gap-4 items-center">
+                <span class="text-sm text-secondary-600 dark:text-secondary-300">
+                  {{ pendingStickerCount() }} pending · {{ allStickerCount() }} total
+                </span>
+              </div>
+              <div class="inline-flex rounded-lg overflow-hidden border border-secondary-300 dark:border-secondary-600">
+                <button (click)="stickerView.set('wall')"
+                  [class]="stickerView() === 'wall'
+                    ? 'px-4 py-2 bg-primary-600 text-white text-sm'
+                    : 'px-4 py-2 bg-white dark:bg-secondary-800 text-secondary-700 dark:text-secondary-200 text-sm'">Wall</button>
+                <button (click)="stickerView.set('list')"
+                  [class]="stickerView() === 'list'
+                    ? 'px-4 py-2 bg-primary-600 text-white text-sm'
+                    : 'px-4 py-2 bg-white dark:bg-secondary-800 text-secondary-700 dark:text-secondary-200 text-sm'">List</button>
+              </div>
+            </div>
+
+            @if (stickerView() === 'wall') {
+              <app-admin-sticker-wall
+                [stickers]="allStickers()"
+                (move)="onWallMove($event)"
+                (approve)="moderateSticker($event, 'approved')"
+                (reject)="moderateSticker($event, 'rejected')"
+                (remove)="deleteSticker($event)" />
+            } @else {
+            <div class="flex gap-4">
               <button
                 (click)="setStickerFilter('pending')"
                 [class]="stickerFilter() === 'pending'
@@ -155,6 +182,7 @@ interface Contact {
                 </div>
               }
             </div>
+            }
           </div>
         }
 
@@ -469,37 +497,31 @@ export class AdminComponent implements OnInit {
   private readonly stickerService = inject(StickerService);
 
   setStickerFilter(filter: 'pending' | 'all'): void {
+    // Data (all stickers) is already loaded; the filter only affects the list.
     this.stickerFilter.set(filter);
-    this.loadStickersForFilter();
   }
 
   loadPendingStickers(): void {
-    this.stickerFilter.set('pending');
-    this.loadStickersForFilter();
-  }
-
-  private loadStickersForFilter(): void {
-    if (this.stickerFilter() === 'all') {
-      this.stickerService.listAll().subscribe({
-        next: (rows) => {
-          this.allStickers.set(rows);
-          this.pendingStickers.set(rows.filter((s) => s.status === 'pending'));
-        },
-        error: (err) => this.showToast('error', `Failed to load stickers: ${this.extractError(err)}`),
-      });
-    } else {
-      this.stickerService.listPending().subscribe({
-        next: (rows) => this.pendingStickers.set(rows),
-        error: (err) => this.showToast('error', `Failed to load stickers: ${this.extractError(err)}`),
-      });
-    }
+    // Always load the full set so the wall and both list filters have data.
+    this.stickerService.listAll().subscribe({
+      next: (rows) => {
+        this.allStickers.set(rows);
+        this.pendingStickers.set(rows.filter((s) => s.status === 'pending'));
+      },
+      error: (err) => this.showToast('error', `Failed to load stickers: ${this.extractError(err)}`),
+    });
   }
 
   moderateSticker(id: number, status: 'approved' | 'rejected'): void {
     this.stickerService.moderate(id, status).subscribe({
       next: () => {
         this.pendingStickers.update((rows) => rows.filter((s) => s.id !== id));
-        this.allStickers.update((rows) => rows.map((s) => s.id === id ? { ...s, status } : s));
+        if (status === 'rejected') {
+          // The server deletes rejected stickers — drop it from the wall/list.
+          this.allStickers.update((rows) => rows.filter((s) => s.id !== id));
+        } else {
+          this.allStickers.update((rows) => rows.map((s) => s.id === id ? { ...s, status } : s));
+        }
         this.showToast('success', status === 'approved' ? 'Sticker approved' : 'Sticker rejected');
       },
       error: (err) => this.showToast('error', `Failed to moderate: ${this.extractError(err)}`),
@@ -515,6 +537,21 @@ export class AdminComponent implements OnInit {
         this.showToast('success', 'Sticker deleted');
       },
       error: (err) => this.showToast('error', `Failed to delete: ${this.extractError(err)}`),
+    });
+  }
+
+  // --- Embedded wall ---
+  stickerView = signal<'wall' | 'list'>('wall');
+
+  onWallMove(pos: { id: number; x: number; y: number; rotation: number }): void {
+    this.stickerService.updatePosition(pos.id, pos.x, pos.y, pos.rotation).subscribe({
+      next: (updated) => {
+        const apply = (rows: Sticker[]) => rows.map((s) => s.id === updated.id ? { ...s, ...updated } : s);
+        this.pendingStickers.update(apply);
+        this.allStickers.update(apply);
+        this.showToast('success', 'Position updated');
+      },
+      error: (err) => this.showToast('error', `Failed to update position: ${this.extractError(err)}`),
     });
   }
 

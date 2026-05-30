@@ -50,7 +50,7 @@ public class Sticker {
     @Column(nullable = false)
     private Double rotation;
 
-    @Column(name = "alpha_mask", length = 64)
+    @Column(name = "alpha_mask", columnDefinition = "TEXT")
     private String alphaMask;
 
     @Enumerated(EnumType.STRING)
