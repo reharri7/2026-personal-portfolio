@@ -6,6 +6,7 @@ import { HeaderComponent } from './components/header/header.component';
 import { FooterComponent } from './components/footer/footer.component';
 import { ThemeService } from './services/theme.service';
 import { GsapService } from './services/gsap.service';
+import { AnalyticsService } from './services/analytics.service';
 
 @Component({
   selector: 'app-root',
@@ -24,11 +25,24 @@ export class AppComponent implements OnInit {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly router = inject(Router);
   private readonly gsapService = inject(GsapService);
+  private readonly analytics = inject(AnalyticsService);
 
   constructor(private themeService: ThemeService) {
     if (isPlatformBrowser(this.platformId)) {
-      afterNextRender(() => this.wireScrollTriggerRefresh());
+      afterNextRender(() => {
+        this.wireScrollTriggerRefresh();
+        this.wireAnalytics();
+      });
     }
+  }
+
+  private wireAnalytics(): void {
+    this.analytics.init();
+    // Track the page already rendered at bootstrap, then every subsequent navigation.
+    this.analytics.trackPageView(this.router.url);
+    this.router.events
+      .pipe(filter((e) => e instanceof NavigationEnd))
+      .subscribe((e) => this.analytics.trackPageView((e as NavigationEnd).urlAfterRedirects));
   }
 
   ngOnInit(): void {

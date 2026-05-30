@@ -61,7 +61,8 @@ public class SecurityConfig {
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(csrfHandler)
-                .ignoringRequestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/logout")
+                .ignoringRequestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/logout",
+                    "/api/public/analytics/collect")
             );
 
         return http.build();

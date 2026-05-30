@@ -7,6 +7,7 @@ import { map } from 'rxjs';
 import { BlogService, BlogPost } from '../../services/blog.service';
 import { StickerService, Sticker } from '../../services/sticker.service';
 import { environment } from '../../../environments/environment';
+import { AnalyticsTabComponent } from './analytics-tab.component';
 
 type ToastKind = 'info' | 'success' | 'error';
 
@@ -23,7 +24,7 @@ interface Contact {
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, QuillModule],
+  imports: [CommonModule, FormsModule, QuillModule, AnalyticsTabComponent],
   template: `
     <div class="bg-white dark:bg-secondary-900 min-h-screen">
       @if (toast(); as t) {
@@ -76,7 +77,20 @@ interface Contact {
               <span class="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs rounded-full">{{ pendingStickers().length }}</span>
             }
           </button>
+          <button
+            (click)="activeTab.set('analytics')"
+            [class]="activeTab() === 'analytics'
+              ? 'px-4 py-2 border-b-2 border-primary-500 text-primary-600 dark:text-primary-400 font-semibold'
+              : 'px-4 py-2 text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-white'"
+          >
+            Analytics
+          </button>
         </div>
+
+        <!-- Analytics Tab -->
+        @if(activeTab() === 'analytics') {
+          <app-analytics-tab></app-analytics-tab>
+        }
 
         <!-- Stickers Tab -->
         @if(activeTab() === 'stickers') {
@@ -441,7 +455,7 @@ export class AdminComponent implements OnInit {
   postsLoading = signal(true);
   tagsInput = '';
 
-  activeTab = signal<'blog' | 'contacts' | 'stickers'>('blog');
+  activeTab = signal<'blog' | 'contacts' | 'stickers' | 'analytics'>('blog');
   contacts = signal<Contact[]>([]);
   contactFilter = signal<'all' | 'unread' | 'read'>('all');
   pendingStickers = signal<Sticker[]>([]);

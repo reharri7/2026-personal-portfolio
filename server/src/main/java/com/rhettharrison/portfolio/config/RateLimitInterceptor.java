@@ -77,6 +77,14 @@ public class RateLimitInterceptor implements HandlerInterceptor {
                 .build();
         }
 
+        // Analytics beacon: fired on every page view/navigation, so allow generous
+        // throughput while still capping abuse.
+        if (path.startsWith("/api/public/analytics/collect")) {
+            return Bucket.builder()
+                .addLimit(Bandwidth.classic(600, Refill.intervally(600, Duration.ofMinutes(1))))
+                .build();
+        }
+
         // Default limit for other endpoints
         // 100 requests per minute
         return Bucket.builder()
