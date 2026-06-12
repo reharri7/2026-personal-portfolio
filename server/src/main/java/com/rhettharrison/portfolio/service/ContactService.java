@@ -1,8 +1,10 @@
 package com.rhettharrison.portfolio.service;
 
+import com.rhettharrison.portfolio.event.ContactSubmittedEvent;
 import com.rhettharrison.portfolio.model.Contact;
 import com.rhettharrison.portfolio.repository.ContactRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -12,11 +14,16 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class ContactService {
-    
+
     private final ContactRepository contactRepository;
-    
+    private final ApplicationEventPublisher eventPublisher;
+
+    @Transactional
     public Contact createContact(Contact contact) {
-        return contactRepository.save(contact);
+        Contact saved = contactRepository.save(contact);
+        // Emailed after commit by EmailListener (admin notification + sender acknowledgement).
+        eventPublisher.publishEvent(new ContactSubmittedEvent(saved));
+        return saved;
     }
     
     public List<Contact> getAllContacts() {

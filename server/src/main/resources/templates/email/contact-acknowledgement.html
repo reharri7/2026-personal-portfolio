@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body th:replace="~{email/layout :: main(~{::content})}">
+<th:block th:fragment="content">
+    <h1 style="margin:0 0 16px; font-size:20px; font-weight:700;">Thanks for reaching out</h1>
+    <p style="margin:0 0 16px;">Hi <span th:text="${name}">there</span>,</p>
+    <p style="margin:0 0 16px;">Thanks for your message — I've received it and will get back to you soon. For your records, here's a copy of what you sent:</p>
+    <p style="margin:0 0 8px;"><strong>Subject:</strong> <span th:text="${subject}">Subject</span></p>
+    <div style="padding:16px; background-color:#f4f4f5; border-radius:8px; white-space:pre-wrap;" th:text="${message}">Message</div>
+    <p style="margin:16px 0 0;">— Rhett</p>
+</th:block>
+</body>
+</html>

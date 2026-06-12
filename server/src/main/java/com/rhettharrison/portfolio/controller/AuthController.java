@@ -1,10 +1,13 @@
 package com.rhettharrison.portfolio.controller;
 
+import com.rhettharrison.portfolio.event.UserRegisteredEvent;
 import com.rhettharrison.portfolio.model.User;
 import com.rhettharrison.portfolio.repository.UserRepository;
+import com.rhettharrison.portfolio.service.PasswordResetService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -28,6 +31,8 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ApplicationEventPublisher eventPublisher;
+    private final PasswordResetService passwordResetService;
     private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
     private final SecurityContextHolderStrategy securityContextHolderStrategy = SecurityContextHolder.getContextHolderStrategy();
     
@@ -52,8 +57,30 @@ public class AuthController {
         user.setIsAdmin(false);
 
         userRepository.save(user);
+        eventPublisher.publishEvent(new UserRegisteredEvent(email, displayName));
 
         return ResponseEntity.ok(Map.of("message", "Registration successful", "email", email));
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        // Always succeed (non-enumerating): never reveal whether an account exists.
+        if (email != null && !email.isBlank()) {
+            passwordResetService.requestReset(email.trim());
+        }
+        return ResponseEntity.ok(Map.of("message", "If that account exists, a reset link is on its way"));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body) {
+        String token = body.get("token");
+        String password = body.get("password");
+        if (token == null || password == null || password.length() < 8) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Token and a password of 8+ characters are required"));
+        }
+        passwordResetService.resetPassword(token, password);
+        return ResponseEntity.ok(Map.of("message", "Password updated"));
     }
 
     @PostMapping("/login")

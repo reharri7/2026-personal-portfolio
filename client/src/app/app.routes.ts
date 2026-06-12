@@ -28,6 +28,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/contact/contact.component').then(m => m.ContactComponent)
   },
   {
+    path: 'newsletter/confirm',
+    loadComponent: () => import('./pages/newsletter/newsletter-confirm.component').then(m => m.NewsletterConfirmComponent)
+  },
+  {
     path: 'fun/sticker-wall',
     loadComponent: () => import('./pages/sticker-wall/sticker-wall.component').then(m => m.StickerWallComponent)
   },
@@ -42,6 +46,14 @@ export const routes: Routes = [
   {
     path: 'register',
     loadComponent: () => import('./pages/register/register.component').then(m => m.RegisterComponent)
+  },
+  {
+    path: 'forgot-password',
+    loadComponent: () => import('./pages/auth/forgot-password.component').then(m => m.ForgotPasswordComponent)
+  },
+  {
+    path: 'reset-password',
+    loadComponent: () => import('./pages/auth/reset-password.component').then(m => m.ResetPasswordComponent)
   },
   {
     path: '**',

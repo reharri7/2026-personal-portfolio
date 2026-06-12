@@ -64,9 +64,12 @@ import { AuthService } from '../../services/auth.service';
             </button>
           </div>
 
-          <div class="text-center">
-            <a routerLink="/register" class="text-primary-600 dark:text-primary-400 hover:text-primary-500">
+          <div class="text-center space-y-2">
+            <a routerLink="/register" class="block text-primary-600 dark:text-primary-400 hover:text-primary-500">
               Don't have an account? Register
+            </a>
+            <a routerLink="/forgot-password" class="block text-sm text-secondary-500 dark:text-secondary-400 hover:text-primary-500">
+              Forgot your password?
             </a>
           </div>
         </form>

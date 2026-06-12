@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body th:replace="~{email/layout :: main(~{::content})}">
+<th:block th:fragment="content">
+    <h1 style="margin:0 0 16px; font-size:20px; font-weight:700;">Confirm your subscription</h1>
+    <p style="margin:0 0 16px;">Thanks for subscribing! Please confirm your email address to start receiving new posts and updates.</p>
+    <p style="margin:0 0 24px;">
+        <a th:href="${confirmUrl}"
+           style="display:inline-block; padding:12px 24px; background-color:#18181b; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:600;">
+            Confirm subscription
+        </a>
+    </p>
+    <p style="margin:0 0 8px; font-size:13px; color:#71717a;">If the button doesn't work, paste this link into your browser:</p>
+    <p style="margin:0; font-size:13px; word-break:break-all;"><a th:href="${confirmUrl}" th:text="${confirmUrl}" style="color:#2563eb;">link</a></p>
+    <p style="margin:16px 0 0; font-size:13px; color:#71717a;">If you didn't request this, you can safely ignore this email.</p>
+</th:block>
+</body>
+</html>

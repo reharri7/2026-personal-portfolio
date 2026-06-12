@@ -29,6 +29,10 @@ public class Sticker {
     @Column(nullable = false, length = 30)
     private String username;
 
+    /** Optional submitter email, used only to notify them on moderation. Never exposed publicly. */
+    @Column(length = 254)
+    private String email;
+
     @Column(length = 200)
     private String message;
 

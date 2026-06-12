@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body th:replace="~{email/layout :: main(~{::content})}">
+<th:block th:fragment="content">
+    <h1 style="margin:0 0 16px; font-size:20px; font-weight:700;">About your sticker</h1>
+    <p style="margin:0 0 16px;">Hi <span th:text="${username}">there</span>,</p>
+    <p style="margin:0 0 16px;">Thanks for submitting a sticker to the wall. Unfortunately it wasn't approved this time — it may not have met the content guidelines, or didn't fit the space available.</p>
+    <p style="margin:0 0 24px;">You're welcome to submit another one any time.</p>
+    <p style="margin:0;">
+        <a th:href="${stickerWallUrl}"
+           style="display:inline-block; padding:12px 24px; background-color:#18181b; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:600;">
+            Try again
+        </a>
+    </p>
+</th:block>
+</body>
+</html>

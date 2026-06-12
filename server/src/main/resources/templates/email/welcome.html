@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body th:replace="~{email/layout :: main(~{::content})}">
+<th:block th:fragment="content">
+    <h1 style="margin:0 0 16px; font-size:20px; font-weight:700;">Welcome aboard 👋</h1>
+    <p style="margin:0 0 16px;">Hi <span th:text="${displayName}">there</span>,</p>
+    <p style="margin:0 0 16px;">Thanks for creating an account on rhettharrison.com. You're all set to explore.</p>
+    <p style="margin:16px 0 0;">— Rhett</p>
+</th:block>
+</body>
+</html>

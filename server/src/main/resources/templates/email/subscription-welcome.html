@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body th:replace="~{email/layout :: main(~{::content})}">
+<th:block th:fragment="content">
+    <h1 style="margin:0 0 16px; font-size:20px; font-weight:700;">You're subscribed 🎉</h1>
+    <p style="margin:0 0 16px;">Thanks for confirming — you'll now get an email when I publish new blog posts and the occasional update.</p>
+    <p style="margin:0 0 16px;">No spam, and you can unsubscribe any time using the link at the bottom of any email.</p>
+    <p style="margin:16px 0 0;">— Rhett</p>
+</th:block>
+</body>
+</html>

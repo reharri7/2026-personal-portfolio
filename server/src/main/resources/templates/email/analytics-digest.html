@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body th:replace="~{email/layout :: main(~{::content})}">
+<th:block th:fragment="content">
+    <h1 style="margin:0 0 16px; font-size:20px; font-weight:700;">Weekly analytics digest</h1>
+    <p style="margin:0 0 20px; color:#71717a; font-size:13px;">Trailing 7 days</p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+        <tr>
+            <td style="padding:12px; background:#f4f4f5; border-radius:8px; text-align:center;">
+                <div style="font-size:24px; font-weight:700;" th:text="${pageViews}">0</div>
+                <div style="font-size:12px; color:#71717a;">Page views</div>
+            </td>
+            <td style="width:12px;"></td>
+            <td style="padding:12px; background:#f4f4f5; border-radius:8px; text-align:center;">
+                <div style="font-size:24px; font-weight:700;" th:text="${uniqueVisitors}">0</div>
+                <div style="font-size:12px; color:#71717a;">Visitors</div>
+            </td>
+            <td style="width:12px;"></td>
+            <td style="padding:12px; background:#f4f4f5; border-radius:8px; text-align:center;">
+                <div style="font-size:24px; font-weight:700;" th:text="${sessions}">0</div>
+                <div style="font-size:12px; color:#71717a;">Sessions</div>
+            </td>
+            <td style="width:12px;"></td>
+            <td style="padding:12px; background:#f4f4f5; border-radius:8px; text-align:center;">
+                <div style="font-size:24px; font-weight:700;" th:text="${bouncePct} + '%'">0%</div>
+                <div style="font-size:12px; color:#71717a;">Bounce</div>
+            </td>
+        </tr>
+    </table>
+
+    <h2 style="margin:0 0 8px; font-size:15px; font-weight:700;">Top pages</h2>
+    <ul style="margin:0 0 20px; padding-left:18px; color:#3f3f46;">
+        <li th:each="p : ${topPages}"><span th:text="${p.label}">/</span> — <strong th:text="${p.count}">0</strong></li>
+        <li th:if="${topPages.isEmpty()}" style="color:#a1a1aa; list-style:none; margin-left:-18px;">No data</li>
+    </ul>
+
+    <h2 style="margin:0 0 8px; font-size:15px; font-weight:700;">Top referrers</h2>
+    <ul style="margin:0; padding-left:18px; color:#3f3f46;">
+        <li th:each="r : ${topReferrers}"><span th:text="${r.label}">site</span> — <strong th:text="${r.count}">0</strong></li>
+        <li th:if="${topReferrers.isEmpty()}" style="color:#a1a1aa; list-style:none; margin-left:-18px;">No data</li>
+    </ul>
+</th:block>
+</body>
+</html>

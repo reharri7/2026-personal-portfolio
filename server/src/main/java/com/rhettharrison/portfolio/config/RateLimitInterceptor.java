@@ -56,6 +56,21 @@ public class RateLimitInterceptor implements HandlerInterceptor {
                 .build();
         }
 
+        // Password reset request: throttle to prevent reset-email spamming.
+        if (path.startsWith("/api/auth/forgot-password") && "POST".equals(request.getMethod())) {
+            return Bucket.builder()
+                .addLimit(Bandwidth.classic(5, Refill.intervally(5, Duration.ofHours(1))))
+                .build();
+        }
+
+        // Newsletter subscribe: prevent abuse of the confirmation-email send.
+        if (path.startsWith("/api/public/newsletter/subscribe") && "POST".equals(request.getMethod())) {
+            // 5 requests per hour for subscription requests
+            return Bucket.builder()
+                .addLimit(Bandwidth.classic(5, Refill.intervally(5, Duration.ofHours(1))))
+                .build();
+        }
+
         // Blog post creation/update limit
         if (path.startsWith("/api/blog") && ("POST".equals(request.getMethod()) || "PUT".equals(request.getMethod()))) {
             // 30 requests per hour for blog post creation/updates

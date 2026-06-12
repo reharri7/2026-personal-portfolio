@@ -304,6 +304,12 @@ const ROTATE_PER_WHEEL = 5; // degrees per wheel notch when placing
                      [(ngModel)]="formUsername" />
             </div>
             <div>
+              <label class="block text-secondary-700 dark:text-secondary-300 text-xs font-semibold mb-1">Email</label>
+              <input type="email" placeholder="Optional — we'll let you know when it's approved" maxlength="254"
+                     class="w-full px-3 py-2 border border-secondary-300 dark:border-secondary-600 rounded-lg bg-white dark:bg-secondary-800 text-secondary-900 dark:text-white text-sm placeholder-secondary-400 dark:placeholder-secondary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                     [(ngModel)]="formEmail" />
+            </div>
+            <div>
               <label class="block text-secondary-700 dark:text-secondary-300 text-xs font-semibold mb-1">Message</label>
               <textarea placeholder="Optional, max 200 characters" rows="2" maxlength="200"
                         class="w-full px-3 py-2 border border-secondary-300 dark:border-secondary-600 rounded-lg bg-white dark:bg-secondary-800 text-secondary-900 dark:text-white text-sm placeholder-secondary-400 dark:placeholder-secondary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -495,6 +501,7 @@ export class StickerWallComponent implements OnInit, OnDestroy {
   );
   formFile: File | null = null;
   formUsername = '';
+  formEmail = '';
   formMessage = '';
   formEffect = '';
 
@@ -1026,6 +1033,7 @@ export class StickerWallComponent implements OnInit, OnDestroy {
     const submission: SubmitStickerInput = {
       image: p.file,
       username: this.formUsername.trim(),
+      email: this.formEmail.trim() || null,
       message: this.formMessage.trim() || null,
       effect: this.formEffect || null,
       x: p.x,
@@ -1039,6 +1047,7 @@ export class StickerWallComponent implements OnInit, OnDestroy {
       next: (created) => {
         if (p.previewUrl.startsWith('blob:')) URL.revokeObjectURL(p.previewUrl);
         this.placing.set(null);
+        this.formEmail = '';
         this.formMessage = '';
         this.formEffect = '';
         this.formFile = null;

@@ -33,6 +33,8 @@ export interface ViewportBounds {
 export interface SubmitStickerInput {
   image: File;
   username: string;
+  /** Optional — used only to notify the submitter when their sticker is moderated. */
+  email?: string | null;
   message?: string | null;
   effect?: string | null;
   x: number;
@@ -81,6 +83,7 @@ export class StickerService {
     const fd = new FormData();
     fd.append('image', input.image);
     fd.append('username', input.username);
+    if (input.email) fd.append('email', input.email);
     if (input.message) fd.append('message', input.message);
     if (input.effect) fd.append('effect', input.effect);
     fd.append('x', String(input.x));

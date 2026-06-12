@@ -1,12 +1,14 @@
 import { Component } from '@angular/core';
+import { NewsletterSignupComponent } from '../newsletter-signup/newsletter-signup.component';
 
 @Component({
   selector: 'app-footer',
   standalone: true,
+  imports: [NewsletterSignupComponent],
   template: `
     <footer class="bg-secondary-900 dark:bg-secondary-950 text-white mt-20">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div>
             <h3 class="text-xl font-bold mb-4">Portfolio</h3>
             <p class="text-secondary-400">A full stack engineer's portfolio showcasing projects and expertise.</p>
@@ -30,6 +32,7 @@ import { Component } from '@angular/core';
               <a href="#" class="text-secondary-400 hover:text-white transition-colors">Instagram</a>
             </div>
           </div>
+          <app-newsletter-signup />
         </div>
         <div class="border-t border-secondary-800 pt-8">
           <p class="text-center text-secondary-400">&copy; 2026 Rhett Harrison. All rights reserved.</p>

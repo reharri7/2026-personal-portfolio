@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body th:replace="~{email/layout :: main(~{::content})}">
+<th:block th:fragment="content">
+    <h1 style="margin:0 0 16px; font-size:22px; font-weight:700;" th:text="${subject}">Subject</h1>
+    <!-- Admin-authored rich text (trusted, ROLE_ADMIN). Rendered unescaped. -->
+    <div style="font-size:15px; line-height:1.6; color:#18181b;" th:utext="${body}">Body</div>
+</th:block>
+</body>
+</html>

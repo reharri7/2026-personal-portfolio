@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body th:replace="~{email/layout :: main(~{::content})}">
+<th:block th:fragment="content">
+    <h1 style="margin:0 0 16px; font-size:20px; font-weight:700;">Your sticker is live! 🎉</h1>
+    <p style="margin:0 0 16px;">Hi <span th:text="${username}">there</span>,</p>
+    <p style="margin:0 0 24px;">Good news — your sticker was approved and is now up on the wall for everyone to see. Thanks for adding to it!</p>
+    <p style="margin:0;">
+        <a th:href="${stickerWallUrl}"
+           style="display:inline-block; padding:12px 24px; background-color:#18181b; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:600;">
+            View the wall
+        </a>
+    </p>
+</th:block>
+</body>
+</html>

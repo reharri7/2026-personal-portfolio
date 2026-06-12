@@ -1,5 +1,6 @@
 package com.rhettharrison.portfolio.service;
 
+import com.rhettharrison.portfolio.event.BlogPostPublishedEvent;
 import com.rhettharrison.portfolio.model.BlogPost;
 import com.rhettharrison.portfolio.model.BlogPostDTO;
 import com.rhettharrison.portfolio.model.User;
@@ -8,6 +9,7 @@ import com.rhettharrison.portfolio.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.owasp.html.HtmlPolicyBuilder;
 import org.owasp.html.PolicyFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,13 @@ public class BlogPostService {
 
     private final BlogPostRepository blogPostRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
+
+    /** Builds the announcement event from a freshly published post. */
+    private BlogPostPublishedEvent publishedEvent(BlogPost post) {
+        return new BlogPostPublishedEvent(
+            post.getTitle(), post.getSlug(), post.getExcerpt(), post.getCoverImageUrl());
+    }
 
     private static final Pattern IMG_SRC_PATTERN =
         Pattern.compile("^(/uploads/|https?://).+", Pattern.CASE_INSENSITIVE);
@@ -97,6 +106,10 @@ public class BlogPostService {
         }
 
         BlogPost saved = blogPostRepository.save(post);
+        if (Boolean.TRUE.equals(saved.getPublished())) {
+            // Announced to subscribers after commit by EmailListener.
+            eventPublisher.publishEvent(publishedEvent(saved));
+        }
         return BlogPostDTO.fromEntityAdmin(saved);
     }
 
@@ -122,13 +135,18 @@ public class BlogPostService {
 
         boolean wasPublished = Boolean.TRUE.equals(post.getPublished());
         post.setPublished(dto.published() != null ? dto.published() : false);
-        if (Boolean.TRUE.equals(post.getPublished()) && !wasPublished) {
+        boolean nowPublished = Boolean.TRUE.equals(post.getPublished());
+        if (nowPublished && !wasPublished) {
             post.setPublishedAt(LocalDateTime.now());
         } else if (Boolean.FALSE.equals(post.getPublished())) {
             post.setPublishedAt(null);
         }
 
         BlogPost saved = blogPostRepository.save(post);
+        // Announce only on the false->true transition, so re-saving a live post sends nothing.
+        if (nowPublished && !wasPublished) {
+            eventPublisher.publishEvent(publishedEvent(saved));
+        }
         return BlogPostDTO.fromEntityAdmin(saved);
     }
 

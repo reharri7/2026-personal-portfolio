@@ -10,6 +10,7 @@ import { environment } from '../../../environments/environment';
 import { AnalyticsTabComponent } from './analytics-tab.component';
 import { AdminStickerWallComponent } from './admin-sticker-wall.component';
 import { AdminRherdleTabComponent } from './admin-rherdle-tab.component';
+import { AdminNewsletterTabComponent } from './admin-newsletter-tab.component';
 
 type ToastKind = 'info' | 'success' | 'error';
 
@@ -26,7 +27,7 @@ interface Contact {
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, QuillModule, AnalyticsTabComponent, AdminStickerWallComponent, AdminRherdleTabComponent],
+  imports: [CommonModule, FormsModule, QuillModule, AnalyticsTabComponent, AdminStickerWallComponent, AdminRherdleTabComponent, AdminNewsletterTabComponent],
   template: `
     <div class="bg-white dark:bg-secondary-900 min-h-screen">
       @if (toast(); as t) {
@@ -94,6 +95,14 @@ interface Contact {
               : 'px-4 py-2 text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-white'"
           >
             Rherdle
+          </button>
+          <button
+            (click)="activeTab.set('newsletter')"
+            [class]="activeTab() === 'newsletter'
+              ? 'px-4 py-2 border-b-2 border-primary-500 text-primary-600 dark:text-primary-400 font-semibold'
+              : 'px-4 py-2 text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-white'"
+          >
+            Newsletter
           </button>
         </div>
 
@@ -501,6 +510,11 @@ interface Contact {
         @if(activeTab() === 'rherdle') {
           <app-admin-rherdle-tab></app-admin-rherdle-tab>
         }
+
+        <!-- Newsletter Tab -->
+        @if(activeTab() === 'newsletter') {
+          <app-admin-newsletter-tab></app-admin-newsletter-tab>
+        }
       </div>
     </div>
   `,
@@ -512,7 +526,7 @@ export class AdminComponent implements OnInit {
   postsLoading = signal(true);
   tagsInput = '';
 
-  activeTab = signal<'blog' | 'contacts' | 'stickers' | 'analytics' | 'rherdle'>('blog');
+  activeTab = signal<'blog' | 'contacts' | 'stickers' | 'analytics' | 'rherdle' | 'newsletter'>('blog');
   contacts = signal<Contact[]>([]);
   contactFilter = signal<'all' | 'unread' | 'read'>('all');
   pendingStickers = signal<Sticker[]>([]);

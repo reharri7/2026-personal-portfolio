@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body th:replace="~{email/layout :: main(~{::content})}">
+<th:block th:fragment="content">
+    <p style="margin:0 0 8px; font-size:13px; text-transform:uppercase; letter-spacing:0.05em; color:#71717a;">New blog post</p>
+    <h1 style="margin:0 0 16px; font-size:22px; font-weight:700;" th:text="${title}">Post title</h1>
+    <img th:if="${coverImageUrl}" th:src="${coverImageUrl}" alt=""
+         style="width:100%; height:auto; border-radius:8px; margin:0 0 16px;"/>
+    <p th:if="${excerpt}" style="margin:0 0 24px; color:#3f3f46;" th:text="${excerpt}">Excerpt</p>
+    <p style="margin:0 0 8px;">
+        <a th:href="${url}"
+           style="display:inline-block; padding:12px 24px; background-color:#18181b; color:#ffffff; text-decoration:none; border-radius:8px; font-weight:600;">
+            Read the post
+        </a>
+    </p>
+</th:block>
+</body>
+</html>

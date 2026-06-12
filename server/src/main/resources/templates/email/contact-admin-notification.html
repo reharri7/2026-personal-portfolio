@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<body th:replace="~{email/layout :: main(~{::content})}">
+<th:block th:fragment="content">
+    <h1 style="margin:0 0 16px; font-size:20px; font-weight:700;">New contact submission</h1>
+    <p style="margin:0 0 8px;"><strong>From:</strong> <span th:text="${name}">Name</span>
+        &lt;<a th:href="'mailto:' + ${email}" th:text="${email}" style="color:#2563eb;">email</a>&gt;</p>
+    <p style="margin:0 0 16px;"><strong>Subject:</strong> <span th:text="${subject}">Subject</span></p>
+    <div style="padding:16px; background-color:#f4f4f5; border-radius:8px; white-space:pre-wrap;" th:text="${message}">Message</div>
+</th:block>
+</body>
+</html>

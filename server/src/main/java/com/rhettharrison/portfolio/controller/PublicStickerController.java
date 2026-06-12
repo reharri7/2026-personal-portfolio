@@ -43,6 +43,7 @@ public class PublicStickerController {
     public ResponseEntity<StickerDTO> submit(
         @RequestParam("image") MultipartFile image,
         @RequestParam("username") String username,
+        @RequestParam(value = "email", required = false) String email,
         @RequestParam(value = "message", required = false) String message,
         @RequestParam(value = "effect", required = false) String effect,
         @RequestParam("x") double x,
@@ -50,7 +51,7 @@ public class PublicStickerController {
         @RequestParam(value = "rotation", defaultValue = "0") double rotation,
         @RequestParam(value = "width", required = false) Double width
     ) {
-        StickerDTO created = stickerService.submit(image, username, message, effect, x, y, rotation, width);
+        StickerDTO created = stickerService.submit(image, username, email, message, effect, x, y, rotation, width);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 }

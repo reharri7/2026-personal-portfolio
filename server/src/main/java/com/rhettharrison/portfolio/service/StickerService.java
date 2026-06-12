@@ -1,11 +1,13 @@
 package com.rhettharrison.portfolio.service;
 
+import com.rhettharrison.portfolio.event.StickerModeratedEvent;
 import com.rhettharrison.portfolio.model.Sticker;
 import com.rhettharrison.portfolio.model.StickerDTO;
 import com.rhettharrison.portfolio.model.StickerStatus;
 import com.rhettharrison.portfolio.repository.StickerRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +35,7 @@ public class StickerService {
     private final StickerRepository repo;
     private final StickerImageProcessor processor;
     private final FileStorageService fileStorage;
+    private final ApplicationEventPublisher eventPublisher;
 
     public List<StickerDTO> getViewport(double minX, double minY, double maxX, double maxY) {
         List<Sticker> rows = repo.findInViewport(
@@ -123,6 +126,7 @@ public class StickerService {
     public StickerDTO submit(
         MultipartFile image,
         String username,
+        String email,
         String message,
         String effect,
         double x,
@@ -147,6 +151,10 @@ public class StickerService {
         }
         if (message != null && message.length() > 200) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Message exceeds 200 chars");
+        }
+        String emailClean = (email == null || email.isBlank()) ? null : email.trim();
+        if (emailClean != null && (emailClean.length() > 254 || !emailClean.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid email");
         }
         String effectClean = (effect == null || effect.isBlank()) ? null : effect.toLowerCase();
         if (effectClean != null && !ALLOWED_EFFECTS.contains(effectClean)) {
@@ -210,6 +218,7 @@ public class StickerService {
         s.setImagePath(stored.filename());
         s.setBlurDataUrl(processed.blurDataUrl());
         s.setUsername(username.trim());
+        s.setEmail(emailClean);
         s.setMessage(message == null || message.isBlank() ? null : message.trim());
         s.setEffect(effectClean);
         s.setX(x);
@@ -240,15 +249,24 @@ public class StickerService {
     public StickerDTO moderate(Long id, StickerStatus status) {
         Sticker s = repo.findById(id).orElseThrow(() ->
             new ResponseStatusException(HttpStatus.NOT_FOUND, "Sticker not found"));
+        // Capture email before any delete so the notification can still be sent.
+        String email = s.getEmail();
+        String username = s.getUsername();
         if (status == StickerStatus.APPROVED) {
             s.setStatus(StickerStatus.APPROVED);
             s.setApprovedAt(LocalDateTime.now());
             repo.save(s);
+            if (email != null) {
+                eventPublisher.publishEvent(new StickerModeratedEvent(email, username, true));
+            }
             return StickerDTO.fromEntity(s);
         }
         if (status == StickerStatus.REJECTED) {
             fileStorage.deleteStickerFile(s.getImagePath());
             repo.delete(s);
+            if (email != null) {
+                eventPublisher.publishEvent(new StickerModeratedEvent(email, username, false));
+            }
             return new StickerDTO(id, null, null, null, null, null,
                 null, null, null, null, null, null, "rejected", null, null);
         }
