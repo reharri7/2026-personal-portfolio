@@ -40,6 +40,18 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/rherdle/rherdle.component').then(m => m.RherdlePageComponent)
   },
   {
+    path: 'fun/bookshelf',
+    loadComponent: () => import('./pages/bookshelf/bookshelf.component').then(m => m.BookshelfComponent)
+  },
+  {
+    path: 'fun/mosaic',
+    loadComponent: () => import('./pages/mosaic/mosaic.component').then(m => m.MosaicPageComponent)
+  },
+  {
+    path: 'fun/mosaic/:slug',
+    loadComponent: () => import('./pages/mosaic/mosaic.component').then(m => m.MosaicPageComponent)
+  },
+  {
     path: 'login',
     loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent)
   },

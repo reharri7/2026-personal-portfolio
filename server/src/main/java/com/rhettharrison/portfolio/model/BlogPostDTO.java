@@ -1,5 +1,7 @@
 package com.rhettharrison.portfolio.model;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -19,7 +21,10 @@ public record BlogPostDTO(
     String authorName,
     Boolean rherdleEnabled,
     Integer rherdleLength,
-    @Size(max = 16) String rherdleWord
+    @Size(max = 16) String rherdleWord,
+    Boolean mosaicEnabled,
+    @Size(max = 1024) String mosaicImageUrl,
+    @Min(3) @Max(5) Integer mosaicGridSize
 ) {
     /** Public-safe mapping: never includes the secret Rherdle word. */
     public static BlogPostDTO fromEntity(BlogPost post) {
@@ -51,6 +56,9 @@ public record BlogPostDTO(
         String word = post.getRherdleWord();
         boolean hasWord = word != null && !word.isBlank();
 
+        String mosaicImageUrl = post.getMosaicImageUrl();
+        boolean hasMosaic = mosaicImageUrl != null && !mosaicImageUrl.isBlank();
+
         return new BlogPostDTO(
             post.getId(),
             post.getTitle(),
@@ -64,7 +72,10 @@ public record BlogPostDTO(
             authorName,
             hasWord,
             hasWord ? word.length() : null,
-            includeWord ? word : null
+            includeWord ? word : null,
+            hasMosaic,
+            hasMosaic ? mosaicImageUrl : null,
+            hasMosaic ? post.getMosaicGridSize() : null
         );
     }
 }

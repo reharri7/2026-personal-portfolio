@@ -12,14 +12,14 @@ import { LucideAngularModule, Sun, Moon } from 'lucide-angular';
   template: `
     <header class="bg-white dark:bg-secondary-800 shadow-md dark:shadow-lg sticky top-0 z-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-16">
-          <div class="flex items-center">
+        <div class="flex justify-between items-center gap-4 h-16">
+          <div class="flex items-center shrink-0">
             <a routerLink="/" class="text-2xl font-bold text-gradient">Portfolio</a>
           </div>
 
           <button
             (click)="toggleMenu()"
-            class="md:hidden btn btn-ghost btn-circle"
+            class="lg:hidden btn btn-ghost btn-circle shrink-0"
           >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path [attr.stroke-linecap]="'round'" [attr.stroke-linejoin]="'round'" stroke-width="2"
@@ -27,7 +27,7 @@ import { LucideAngularModule, Sun, Moon } from 'lucide-angular';
             </svg>
           </button>
 
-          <nav class="hidden md:flex gap-8 items-center">
+          <nav class="hidden lg:flex flex-nowrap gap-4 xl:gap-6 items-center [&>*]:whitespace-nowrap">
             <a routerLink="/" routerLinkActive="text-primary-600 dark:text-primary-500"
               [routerLinkActiveOptions]="{ exact: true }"
               class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
@@ -48,6 +48,14 @@ import { LucideAngularModule, Sun, Moon } from 'lucide-angular';
             <a routerLink="/fun/rherdle" routerLinkActive="text-primary-600 dark:text-primary-500"
                class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
               Rherdle
+            </a>
+            <a routerLink="/fun/bookshelf" routerLinkActive="text-primary-600 dark:text-primary-500"
+               class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
+              Bookshelf
+            </a>
+            <a routerLink="/fun/mosaic" routerLinkActive="text-primary-600 dark:text-primary-500"
+               class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
+              Mosaic
             </a>
             <a routerLink="/contact" routerLinkActive="text-primary-600 dark:text-primary-500"
               class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
@@ -73,7 +81,7 @@ import { LucideAngularModule, Sun, Moon } from 'lucide-angular';
 
           <button
             (click)="toggleTheme()"
-            class="btn btn-ghost btn-circle"
+            class="btn btn-ghost btn-circle shrink-0"
           >
             @if(themeService.isDarkMode()) {
               <lucide-icon [img]="sunIcon" class="w-5 h-5 text-yellow-500"></lucide-icon>
@@ -85,13 +93,15 @@ import { LucideAngularModule, Sun, Moon } from 'lucide-angular';
         </div>
 
         @if(isMenuOpen()) {
-          <nav class="md:hidden pb-4">
+          <nav class="lg:hidden pb-4">
             <div class="flex flex-col gap-4">
               <a routerLink="/" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Home</a>
               <a routerLink="/about" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">About</a>
               <a routerLink="/blog" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Blog</a>
               <a routerLink="/fun/sticker-wall" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Sticker Wall</a>
               <a routerLink="/fun/rherdle" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Rherdle</a>
+              <a routerLink="/fun/bookshelf" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Bookshelf</a>
+              <a routerLink="/fun/mosaic" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Mosaic</a>
               <a routerLink="/contact" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Contact</a>
               @if (authService.isAuthenticated()) {
                 <a routerLink="/admin" (click)="toggleMenu()" class="text-secondary-700 dark:text-secondary-300 hover:text-primary-600">Admin</a>

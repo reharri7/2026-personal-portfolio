@@ -25,8 +25,7 @@ import { GsapService } from '../../services/gsap.service';
           <div class="grid md:grid-cols-2 gap-12 items-center perspective-1000">
             <div #heroText class="z-10">
               <h1 class="text-5xl md:text-6xl font-bold mb-6 text-secondary-900 dark:text-white text-3d">
-                <span class="hero-line inline-block">Full Stack</span>
-                <span class="hero-line inline-block text-gradient">Engineer</span>
+                <span class="hero-line inline-block">Full Stack</span>&ngsp;<span class="hero-line inline-block text-gradient">Engineer</span>
               </h1>
               <p class="hero-line text-xl text-secondary-600 dark:text-secondary-400 mb-8">
                 Building scalable applications with modern technologies. Passionate about clean code, user experience,
@@ -195,10 +194,15 @@ export class HomeComponent implements OnInit, OnDestroy {
     tl.from(lines, { opacity: 0, y: 28, duration: 0.7, stagger: 0.08 })
       .from(layers, { opacity: 0, scale: 0.85, y: 30, duration: 0.9, stagger: 0.07 }, '-=0.5');
 
-    // Floating loops on scene layers
+    // Floating loops on scene layers.
+    // Uses yPercent, not y: the pointer parallax below owns x/y, and two tweens
+    // writing the same property would fight (GSAP does not overwrite by default).
+    // Amplitude is converted from px so the motion looks identical either way.
     layers.forEach((layer, i) => {
+      const amplitude = 10 + (i % 3) * 6;
+      const height = layer.offsetHeight || amplitude;
       gsap.to(layer, {
-        y: '+=' + (10 + (i % 3) * 6),
+        yPercent: '+=' + (amplitude / height) * 100,
         rotation: '+=' + (i % 2 === 0 ? 4 : -4),
         duration: 6 + i * 1.2,
         ease: 'sine.inOut',
@@ -238,8 +242,20 @@ export class HomeComponent implements OnInit, OnDestroy {
         s.y(cy * s.factor);
       }
     };
+    // Ease the layers back to rest when the pointer leaves, otherwise they stay
+    // frozen at whatever offset they held on the way out.
+    const onLeave = () => {
+      for (const s of setters) {
+        s.x(0);
+        s.y(0);
+      }
+    };
     heroEl.addEventListener('mousemove', onMove);
-    this.cleanups.push(() => heroEl.removeEventListener('mousemove', onMove));
+    heroEl.addEventListener('mouseleave', onLeave);
+    this.cleanups.push(() => {
+      heroEl.removeEventListener('mousemove', onMove);
+      heroEl.removeEventListener('mouseleave', onLeave);
+    });
 
     // Scroll parallax on background orbs
     const bgTrigger = ScrollTrigger.create({

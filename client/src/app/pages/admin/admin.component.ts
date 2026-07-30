@@ -11,6 +11,8 @@ import { AnalyticsTabComponent } from './analytics-tab.component';
 import { AdminStickerWallComponent } from './admin-sticker-wall.component';
 import { AdminRherdleTabComponent } from './admin-rherdle-tab.component';
 import { AdminNewsletterTabComponent } from './admin-newsletter-tab.component';
+import { AdminBookshelfTabComponent } from './admin-bookshelf-tab.component';
+import { AdminMosaicTabComponent } from './admin-mosaic-tab.component';
 
 type ToastKind = 'info' | 'success' | 'error';
 
@@ -27,7 +29,7 @@ interface Contact {
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, QuillModule, AnalyticsTabComponent, AdminStickerWallComponent, AdminRherdleTabComponent, AdminNewsletterTabComponent],
+  imports: [CommonModule, FormsModule, QuillModule, AnalyticsTabComponent, AdminStickerWallComponent, AdminRherdleTabComponent, AdminNewsletterTabComponent, AdminBookshelfTabComponent, AdminMosaicTabComponent],
   template: `
     <div class="bg-white dark:bg-secondary-900 min-h-screen">
       @if (toast(); as t) {
@@ -103,6 +105,22 @@ interface Contact {
               : 'px-4 py-2 text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-white'"
           >
             Newsletter
+          </button>
+          <button
+            (click)="activeTab.set('bookshelf')"
+            [class]="activeTab() === 'bookshelf'
+              ? 'px-4 py-2 border-b-2 border-primary-500 text-primary-600 dark:text-primary-400 font-semibold'
+              : 'px-4 py-2 text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-white'"
+          >
+            Bookshelf
+          </button>
+          <button
+            (click)="activeTab.set('mosaic')"
+            [class]="activeTab() === 'mosaic'
+              ? 'px-4 py-2 border-b-2 border-primary-500 text-primary-600 dark:text-primary-400 font-semibold'
+              : 'px-4 py-2 text-secondary-600 dark:text-secondary-400 hover:text-secondary-900 dark:hover:text-white'"
+          >
+            Mosaic
           </button>
         </div>
 
@@ -327,6 +345,39 @@ interface Contact {
                 </div>
 
                 <div>
+                  <label class="block text-secondary-700 dark:text-secondary-300 font-semibold mb-2">Mosaic photo (optional mini-game)</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    (change)="onMosaicImageSelected($event)"
+                    class="block w-full text-sm text-secondary-700 dark:text-secondary-300 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-primary-600 file:text-white hover:file:bg-primary-700"
+                  />
+                  @if (postForm.mosaicImageUrl) {
+                    <div class="mt-2 flex items-center gap-3">
+                      <img [src]="postForm.mosaicImageUrl" alt="Mosaic preview" class="h-24 w-24 object-cover rounded border border-secondary-200 dark:border-secondary-700" />
+                      <button type="button" (click)="postForm.mosaicImageUrl = ''" class="text-sm text-red-600 hover:underline">Remove</button>
+                    </div>
+                  }
+                  @if (mosaicUploadState() === 'uploading') {
+                    <p class="text-sm text-secondary-600 dark:text-secondary-300 mt-2">Uploading…</p>
+                  } @else if (mosaicUploadState() === 'error') {
+                    <p class="text-sm text-red-600 dark:text-red-400 mt-2">✕ {{ mosaicUploadError() }} — try again.</p>
+                  }
+                  <div class="mt-2 flex items-center gap-3">
+                    <label class="text-sm text-secondary-700 dark:text-secondary-300">Difficulty</label>
+                    <select [ngModel]="postForm.mosaicGridSize" (ngModelChange)="postForm.mosaicGridSize = +$event" name="mosaicGridSize"
+                      class="px-3 py-1.5 border border-secondary-300 dark:border-secondary-600 rounded-lg bg-white dark:bg-secondary-800 text-secondary-900 dark:text-white text-sm">
+                      <option [ngValue]="3">Easy (3×3)</option>
+                      <option [ngValue]="4">Medium (4×4)</option>
+                      <option [ngValue]="5">Hard (5×5)</option>
+                    </select>
+                  </div>
+                  <p class="text-xs text-secondary-500 dark:text-secondary-400 mt-1">
+                    Upload a photo, then type <code>[[mosaic]]</code> in the post content where the puzzle should appear.
+                  </p>
+                </div>
+
+                <div>
                   <label class="block text-secondary-700 dark:text-secondary-300 font-semibold mb-2">Publish Date</label>
                   <input
                     [(ngModel)]="postForm.date"
@@ -515,6 +566,16 @@ interface Contact {
         @if(activeTab() === 'newsletter') {
           <app-admin-newsletter-tab></app-admin-newsletter-tab>
         }
+
+        <!-- Bookshelf Tab -->
+        @if(activeTab() === 'bookshelf') {
+          <app-admin-bookshelf-tab></app-admin-bookshelf-tab>
+        }
+
+        <!-- Mosaic Tab -->
+        @if(activeTab() === 'mosaic') {
+          <app-admin-mosaic-tab></app-admin-mosaic-tab>
+        }
       </div>
     </div>
   `,
@@ -526,7 +587,7 @@ export class AdminComponent implements OnInit {
   postsLoading = signal(true);
   tagsInput = '';
 
-  activeTab = signal<'blog' | 'contacts' | 'stickers' | 'analytics' | 'rherdle' | 'newsletter'>('blog');
+  activeTab = signal<'blog' | 'contacts' | 'stickers' | 'analytics' | 'rherdle' | 'newsletter' | 'bookshelf' | 'mosaic'>('blog');
   contacts = signal<Contact[]>([]);
   contactFilter = signal<'all' | 'unread' | 'read'>('all');
   pendingStickers = signal<Sticker[]>([]);
@@ -650,6 +711,9 @@ export class AdminComponent implements OnInit {
     }
   };
 
+  mosaicUploadState = signal<'idle' | 'uploading' | 'error'>('idle');
+  mosaicUploadError = signal('');
+
   postForm = {
     title: '',
     slug: '',
@@ -657,6 +721,8 @@ export class AdminComponent implements OnInit {
     content: '',
     coverImageUrl: '',
     rherdleWord: '',
+    mosaicImageUrl: '',
+    mosaicGridSize: 4,
     date: new Date().toISOString().split('T')[0],
     published: true
   };
@@ -830,6 +896,8 @@ export class AdminComponent implements OnInit {
       content: post.content,
       coverImageUrl: post.coverImageUrl ?? '',
       rherdleWord: post.rherdleWord ?? '',
+      mosaicImageUrl: post.mosaicImageUrl ?? '',
+      mosaicGridSize: post.mosaicGridSize ?? 4,
       date: post.date,
       published: post.published
     };
@@ -859,6 +927,8 @@ export class AdminComponent implements OnInit {
     this.formError.set('');
     this.coverUploadState.set('idle');
     this.coverUploadError.set('');
+    this.mosaicUploadState.set('idle');
+    this.mosaicUploadError.set('');
     this.postForm = {
       title: '',
       slug: '',
@@ -866,6 +936,8 @@ export class AdminComponent implements OnInit {
       content: '',
       coverImageUrl: '',
       rherdleWord: '',
+      mosaicImageUrl: '',
+      mosaicGridSize: 4,
       date: new Date().toISOString().split('T')[0],
       published: true
     };
@@ -900,6 +972,30 @@ export class AdminComponent implements OnInit {
         this.coverUploadError.set(msg);
         input.value = '';
         this.showToast('error', `Cover upload failed: ${msg}`);
+      }
+    });
+  }
+
+  onMosaicImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    this.mosaicUploadState.set('uploading');
+    this.mosaicUploadError.set('');
+    this.showToast('info', 'Uploading mosaic photo...');
+    this.uploadImage(file).subscribe({
+      next: (url) => {
+        this.postForm.mosaicImageUrl = url;
+        this.mosaicUploadState.set('idle');
+        input.value = '';
+        this.showToast('success', 'Mosaic photo uploaded');
+      },
+      error: (err) => {
+        const msg = this.extractError(err);
+        this.mosaicUploadState.set('error');
+        this.mosaicUploadError.set(msg);
+        input.value = '';
+        this.showToast('error', `Mosaic upload failed: ${msg}`);
       }
     });
   }

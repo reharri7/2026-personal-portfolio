@@ -69,6 +69,19 @@ public class BlogPostService {
         return normalized.matches("[a-z]{3,16}") ? normalized : null;
     }
 
+    /** Clamps the mosaic grid to 3–5, defaulting to 4 when an image is set. */
+    private Integer normalizeMosaicGridSize(Integer gridSize) {
+        if (gridSize == null) return 4;
+        return Math.max(3, Math.min(5, gridSize));
+    }
+
+    /** Applies the optional embedded-mosaic config, keeping image+grid in sync. */
+    private void applyMosaic(BlogPost post, String imageUrl, Integer gridSize) {
+        String sanitized = sanitizeImageUrl(imageUrl);
+        post.setMosaicImageUrl(sanitized);
+        post.setMosaicGridSize(sanitized != null ? normalizeMosaicGridSize(gridSize) : null);
+    }
+
     private String generateSlug(String title) {
         String slug = title.toLowerCase().trim()
             .replaceAll("[^\\w\\s-]", "")
@@ -98,6 +111,7 @@ public class BlogPostService {
         post.setTags(dto.tags() != null ? String.join(",", dto.tags()) : null);
         post.setCoverImageUrl(sanitizeImageUrl(dto.coverImageUrl()));
         post.setRherdleWord(normalizeRherdleWord(dto.rherdleWord()));
+        applyMosaic(post, dto.mosaicImageUrl(), dto.mosaicGridSize());
         post.setPublished(dto.published() != null ? dto.published() : false);
         post.setAuthor(author);
 
@@ -132,6 +146,7 @@ public class BlogPostService {
         post.setTags(dto.tags() != null ? String.join(",", dto.tags()) : null);
         post.setCoverImageUrl(sanitizeImageUrl(dto.coverImageUrl()));
         post.setRherdleWord(normalizeRherdleWord(dto.rherdleWord()));
+        applyMosaic(post, dto.mosaicImageUrl(), dto.mosaicGridSize());
 
         boolean wasPublished = Boolean.TRUE.equals(post.getPublished());
         post.setPublished(dto.published() != null ? dto.published() : false);

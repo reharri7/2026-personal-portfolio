@@ -15,7 +15,7 @@
 
 @layer components {
   .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500;
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500;
   }
 
   .btn-primary {
@@ -38,8 +38,12 @@
     @apply text-4xl font-bold mb-12 text-secondary-900 dark:text-white;
   }
 
+  /* The gradient is painted through the glyphs via background-clip, so it only
+     covers the element's own box. Descenders that hang below the box (tight
+     line-heights on large headings) would otherwise render unpainted, i.e.
+     clipped off. The bottom padding keeps them inside the painted area. */
   .text-gradient {
-    @apply bg-gradient-to-r from-primary-600 to-primary-400 dark:from-primary-500 dark:to-primary-300 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-primary-600 to-primary-400 dark:from-primary-500 dark:to-primary-300 bg-clip-text text-transparent pb-[0.12em];
   }
 
   /* 3D and artistic additions */

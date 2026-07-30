@@ -4,11 +4,12 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { BlogService, BlogPost } from '../../../services/blog.service';
 import { GsapService } from '../../../services/gsap.service';
 import { RherdleComponent } from '../../../components/rherdle/rherdle.component';
+import { MosaicComponent } from '../../../components/mosaic/mosaic.component';
 
 @Component({
   selector: 'app-blog-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, RherdleComponent],
+  imports: [CommonModule, RouterLink, RherdleComponent, MosaicComponent],
   template: `
     <div class="bg-white dark:bg-secondary-900">
       <div #container class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
@@ -52,6 +53,16 @@ import { RherdleComponent } from '../../../components/rherdle/rherdle.component'
                       mode="BLOG"
                       [slug]="post()!.slug"
                       [length]="post()!.rherdleLength ?? 5"
+                      [storageKey]="post()!.slug" />
+                  </div>
+                } @else if (segment.type === 'mosaic') {
+                  <div class="not-prose my-10 p-6 rounded-2xl border border-secondary-200 dark:border-secondary-700 bg-secondary-50 dark:bg-secondary-800/50">
+                    <p class="text-center text-sm font-semibold text-secondary-600 dark:text-secondary-400 mb-4">
+                      Take a break — unscramble this post's photo
+                    </p>
+                    <app-mosaic
+                      [imageUrl]="post()!.mosaicImageUrl ?? ''"
+                      [gridSize]="post()!.mosaicGridSize ?? 4"
                       [storageKey]="post()!.slug" />
                   </div>
                 } @else {
@@ -109,28 +120,35 @@ export class BlogDetailComponent implements OnInit, OnDestroy {
     });
   });
 
-  // Split the post body on the [[rherdle]] token (optionally wrapped in a <p>) so the
-  // embedded mini-game renders inline at that exact spot. Falls back to appending the
-  // game at the end when a word is configured but no token is present.
-  contentSegments = computed<Array<{ type: 'html'; html: string } | { type: 'game' }>>(() => {
+  // Split the post body on the [[rherdle]] / [[mosaic]] tokens (optionally wrapped in a
+  // <p>) so each embedded mini-game renders inline at that exact spot. Falls back to
+  // appending an enabled game at the end when its token is absent.
+  contentSegments = computed<Array<{ type: 'html'; html: string } | { type: 'game' } | { type: 'mosaic' }>>(() => {
     const html = this.sanitizedContent();
     const post = this.post();
-    const tokenRegex = /(?:<p>\s*)?\[\[rherdle\]\](?:\s*<\/p>)?/gi;
-    const hasToken = tokenRegex.test(html);
-    tokenRegex.lastIndex = 0;
+    const tokenRegex = /(?:<p>\s*)?\[\[(rherdle|mosaic)\]\](?:\s*<\/p>)?/gi;
 
-    const segments: Array<{ type: 'html'; html: string } | { type: 'game' }> = [];
-    if (hasToken) {
-      const parts = html.split(tokenRegex);
-      parts.forEach((part, i) => {
-        if (part) segments.push({ type: 'html', html: part });
-        if (i < parts.length - 1 && post?.rherdleEnabled) segments.push({ type: 'game' });
-        else if (i < parts.length - 1) segments.push({ type: 'html', html: '' });
-      });
-    } else {
-      segments.push({ type: 'html', html });
-      if (post?.rherdleEnabled) segments.push({ type: 'game' });
+    const segments: Array<{ type: 'html'; html: string } | { type: 'game' } | { type: 'mosaic' }> = [];
+    let lastIndex = 0;
+    let placedGame = false;
+    let placedMosaic = false;
+    let match: RegExpExecArray | null;
+    while ((match = tokenRegex.exec(html)) !== null) {
+      const before = html.slice(lastIndex, match.index);
+      if (before) segments.push({ type: 'html', html: before });
+      const token = match[1].toLowerCase();
+      if (token === 'rherdle' && post?.rherdleEnabled) { segments.push({ type: 'game' }); placedGame = true; }
+      else if (token === 'mosaic' && post?.mosaicEnabled) { segments.push({ type: 'mosaic' }); placedMosaic = true; }
+      lastIndex = match.index + match[0].length;
     }
+    const rest = html.slice(lastIndex);
+    if (rest) segments.push({ type: 'html', html: rest });
+
+    // If a game is configured but its token was never placed, append it at the end.
+    if (post?.rherdleEnabled && !placedGame) segments.push({ type: 'game' });
+    if (post?.mosaicEnabled && !placedMosaic) segments.push({ type: 'mosaic' });
+
+    if (segments.length === 0) segments.push({ type: 'html', html });
     return segments;
   });
 

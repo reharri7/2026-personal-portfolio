@@ -6,12 +6,12 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "blog_posts")
+@Table(name = "mosaic_puzzles")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class BlogPost {
+public class MosaicPuzzle {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,41 +23,22 @@ public class BlogPost {
     @Column(nullable = false, unique = true)
     private String slug;
 
-    @Column(columnDefinition = "TEXT")
-    private String excerpt;
+    @Column(name = "image_url", nullable = false, length = 1024)
+    private String imageUrl;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
-    private String content;
+    /** Tiles per side: 3, 4 or 5. */
+    @Column(name = "grid_size", nullable = false)
+    private Integer gridSize = 4;
 
-    @Column(length = 500)
-    private String tags;
-
-    @Column(length = 1024)
-    private String coverImageUrl;
-
-    @Column(name = "rherdle_word", length = 16)
-    private String rherdleWord;
-
-    @Column(name = "mosaic_image_url", length = 1024)
-    private String mosaicImageUrl;
-
-    @Column(name = "mosaic_grid_size")
-    private Integer mosaicGridSize;
-
+    /** Whether the puzzle is shown on the public /fun/mosaic page. */
     @Column(nullable = false)
-    private Boolean published = false;
-
-    private LocalDateTime publishedAt;
+    private Boolean published = true;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @Column(nullable = false)
     private LocalDateTime updatedAt;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "author_id", nullable = false)
-    private User author;
 
     @PrePersist
     protected void onCreate() {

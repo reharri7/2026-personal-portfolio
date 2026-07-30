@@ -20,6 +20,12 @@ export interface BlogPost {
   rherdleLength?: number;
   /** The secret word — only present on admin responses, used for editing. */
   rherdleWord?: string;
+  /** True when this post has an embedded mosaic puzzle configured. */
+  mosaicEnabled?: boolean;
+  /** Photo for the embedded mosaic puzzle. */
+  mosaicImageUrl?: string;
+  /** Tiles-per-side for the embedded mosaic puzzle (3–5). */
+  mosaicGridSize?: number;
 }
 
 @Injectable({

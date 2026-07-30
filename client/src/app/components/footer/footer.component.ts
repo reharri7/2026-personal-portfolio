@@ -8,11 +8,11 @@ import { NewsletterSignupComponent } from '../newsletter-signup/newsletter-signu
   template: `
     <footer class="bg-secondary-900 dark:bg-secondary-950 text-white mt-20">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-          <div>
-            <h3 class="text-xl font-bold mb-4">Portfolio</h3>
-            <p class="text-secondary-400">A full stack engineer's portfolio showcasing projects and expertise.</p>
-          </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+<!--          <div>-->
+<!--            <h3 class="text-xl font-bold mb-4">Portfolio</h3>-->
+<!--            <p class="text-secondary-400">A full stack engineer's portfolio showcasing projects and expertise.</p>-->
+<!--          </div>-->
           <div>
             <h3 class="text-xl font-bold mb-4">Quick Links</h3>
             <ul class="space-y-2">

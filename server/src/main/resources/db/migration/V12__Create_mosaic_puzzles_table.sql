@@ -1,0 +1,10 @@
+CREATE TABLE mosaic_puzzles (
+    id BIGSERIAL PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    slug VARCHAR(255) NOT NULL UNIQUE,
+    image_url VARCHAR(1024) NOT NULL,
+    grid_size INT NOT NULL DEFAULT 4,
+    published BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);

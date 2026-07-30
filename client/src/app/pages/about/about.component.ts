@@ -13,7 +13,7 @@ import { GsapService } from '../../services/gsap.service';
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
         <div #intro class="grid md:grid-cols-3 gap-12 items-start mb-20">
           <div class="md:col-span-1">
-            <div #portrait class="relative h-64 mb-6 perspective-1000">
+            <div #portrait class="relative h-64 mx-4 mt-6 mb-20 perspective-1000">
               <div class="parallax-layer w-full h-full left-0 top-0 rounded-2xl bg-gradient-to-br from-primary-400 to-primary-600 shadow-2xl" data-depth="-20"></div>
               <div class="parallax-layer w-32 h-32 -top-6 -left-4 rounded-2xl bg-white/90 dark:bg-secondary-800/95 shadow-xl rotate-6 backdrop-blur" data-depth="30"></div>
               <div class="parallax-layer w-20 h-20 bottom-4 -right-4 rounded-full border-4 border-primary-300/70 dark:border-primary-300/40" data-depth="50"></div>
@@ -248,9 +248,14 @@ export class AboutComponent implements OnDestroy {
       tl.from(layers, { opacity: 0, scale: 0.85, y: 20, duration: 0.8, stagger: 0.08 })
         .from(lines, { opacity: 0, y: 24, duration: 0.6, stagger: 0.08 }, '-=0.5');
 
+      // yPercent rather than y: the pointer parallax below owns x/y, and two
+      // tweens on the same property fight (GSAP does not overwrite by default).
+      // Amplitude is converted from px so the motion looks identical either way.
       layers.forEach((layer, i) => {
+        const amplitude = 6 + (i % 3) * 4;
+        const height = layer.offsetHeight || amplitude;
         gsap.to(layer, {
-          y: '+=' + (6 + (i % 3) * 4),
+          yPercent: '+=' + (amplitude / height) * 100,
           rotation: '+=' + (i % 2 === 0 ? 3 : -3),
           duration: 5 + i,
           ease: 'sine.inOut',
@@ -277,8 +282,20 @@ export class AboutComponent implements OnDestroy {
           s.y(cy * s.factor);
         }
       };
+      // Ease back to rest when the pointer leaves, otherwise the layers stay
+      // frozen at whatever offset they held on the way out.
+      const onLeave = () => {
+        for (const s of setters) {
+          s.x(0);
+          s.y(0);
+        }
+      };
       portrait.addEventListener('mousemove', onMove);
-      this.cleanups.push(() => portrait.removeEventListener('mousemove', onMove));
+      portrait.addEventListener('mouseleave', onLeave);
+      this.cleanups.push(() => {
+        portrait.removeEventListener('mousemove', onMove);
+        portrait.removeEventListener('mouseleave', onLeave);
+      });
     }
 
     // Skill bars: collapse to 0 then animate to target on scroll into view.
